@@ -45,13 +45,15 @@ export default function AppDetection() {
       console.log("APK selection error:", error);
     }
   };
+const handleScan = () =>{
+  router.push("/pages/app_detection/scan_result");
+}
 
-  const handleScan = () => {
+  const apkHandleScan = () => {
     if (!selectedApk) {
       Alert.alert("APK Required", "Please add APK first ⚠️");
       return;
     }
-
     router.push("/pages/app_detection/scan_result");
   };
 
@@ -64,8 +66,7 @@ export default function AppDetection() {
           </View>
           <Text style={styles.appName}>{item.name}</Text>
         </View>
-
-        <TouchableOpacity style={styles.scanBtn} onPress={handleScan}>
+          <TouchableOpacity style={styles.scanBtn} onPress={handleScan}>
           <Text style={styles.scanText}>Scan</Text>
         </TouchableOpacity>
       </View>
@@ -96,7 +97,7 @@ export default function AppDetection() {
 
       {/* ✅ SCAN BUTTON - Appears after APK is selected */}
       {selectedApk && (
-        <TouchableOpacity style={styles.scanApkButton} onPress={handleScan}>
+        <TouchableOpacity style={styles.scanApkButton} onPress={apkHandleScan}>
           <Ionicons name="shield-checkmark" size={20} color="#FFFFFF" />
           <Text style={styles.scanApkButtonText}>Scan Selected APK</Text>
         </TouchableOpacity>

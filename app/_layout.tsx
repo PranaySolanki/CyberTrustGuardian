@@ -9,7 +9,10 @@ export default function RootLayout() {
         <Stack.Screen name="index" options={{ title: "Home" }} />
         <Stack.Screen name="pages/phishing/phishing" options={{ title: "Phishing Detector" }} />
         <Stack.Screen name="pages/phishing/scan_result" options={{ title: "Scan Result" }} />
+        
         <Stack.Screen name="pages/qr_scanner/qr_scanner" options={{ title: "QR Code Detector" }} />
+        <Stack.Screen name="pages/qr_scanner/scan_result" options={{ title: "Scan Result" }} />
+        
         <Stack.Screen name="pages/app_detection/app_detection" options={{ title: "App Permission Analyzer" }} />
         <Stack.Screen name="pages/app_detection/scan_result" options={{ title: "Scan Result" }} />
       </Stack>
