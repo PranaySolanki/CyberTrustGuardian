@@ -65,7 +65,7 @@ export default function Index() {
         <Text style={styles.sectionTitle}>Security Tools</Text>
 
         <View style={styles.toolList}>
-          <Link href="/pages/phishing" style={{ textDecorationLine: "none" }}>
+          <Link href="/pages/phishing/phishing" style={{ textDecorationLine: "none" }}>
             <View style={styles.toolItem}>
               <View style={[styles.toolIcon, { backgroundColor: "#ff6b6b" }]}>
                 <Text style={styles.toolIconEmoji}>✉️</Text>
@@ -78,7 +78,7 @@ export default function Index() {
             </View>
           </Link>
 
-          <Link href="/pages/qr_scanner" style={{ textDecorationLine: "none" }}>
+          <Link href="/pages/qr_scanner/qr_scanner" style={{ textDecorationLine: "none" }}>
             <View style={styles.toolItem}>
               <View style={[styles.toolIcon, { backgroundColor: "#4d9cff" }]}>
                 <Text style={styles.toolIconEmoji}>📸</Text>
@@ -91,7 +91,7 @@ export default function Index() {
             </View>
           </Link>
 
-          <Link href="/pages/app_detection" style={{ textDecorationLine: "none" }}>
+          <Link href="/pages/app_detection/app_detection" style={{ textDecorationLine: "none" }}>
             <View style={styles.toolItem}>
               <View style={[styles.toolIcon, { backgroundColor: "#a77bff" }]}>
                 <Text style={styles.toolIconEmoji}>🔒</Text>
