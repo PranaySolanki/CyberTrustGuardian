@@ -1,3 +1,4 @@
+import { Link, router } from 'expo-router'
 import React, { useState } from 'react'
 import {
   Dimensions,
@@ -47,6 +48,8 @@ export default function Phishing() {
       const emptyInputAlert = 'Please enter some content to analyze.'
       alert(emptyInputAlert)
       return 
+    }else{
+    router.push('/pages/phishing/scan_result')
     }
     // const base = Math.min(80, Math.max(5, Math.floor(text.length / 2)))
     // const random = Math.floor(Math.random() * 20)
