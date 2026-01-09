@@ -26,14 +26,14 @@ export default function Index() {
         </View>
 
         <View style={styles.statusCard}>
-          <View>
+          <View style={styles.statusContent}>
             <Text style={styles.statusTitle}>System Secure</Text>
             <Text style={styles.statusSubtitle}>
               Your device is protected. 47 threats blocked this week.
             </Text>
           </View>
           <View style={styles.riskPill}>
-            <Text style={styles.riskText}>Low Risk</Text>
+            <Text style={styles.riskText} numberOfLines={1}>Low Risk</Text>
           </View>
         </View>
 
@@ -160,11 +160,12 @@ const styles = StyleSheet.create({
   appSubtitle: { color: "#6b7280" },
   themeToggle: { padding: 8 },
 
-  statusCard: { backgroundColor: "#0f9d58", borderRadius: 12, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },
-  statusTitle: { color: "#fff", fontSize: 18, fontWeight: "700", marginBottom: 6 },
-  statusSubtitle: { color: "rgba(255,255,255,0.9)" },
-  riskPill: { marginBottom: 42, backgroundColor: "rgba(255,255,255,0.2)", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 160 },
-  riskText: { color: "#fff", fontWeight: "600" },
+  statusCard: { backgroundColor: "#0f9d58", borderRadius: 12, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16, paddingRight: 20, overflow: 'hidden' },
+  statusTitle: { color: "#fff", fontSize: 18, fontWeight: "700" },
+  statusSubtitle: { marginTop: 7, color: "rgba(255,255,255,0.9)" },
+  statusContent: { flex: 1, marginRight: -60 },
+  riskPill: { backgroundColor: "rgba(255,255,255,0.2)", marginBottom: 42.5, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 50, alignSelf: "center", maxWidth: 110, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  riskText: { color: "#fff", fontWeight: "600", fontSize: 13 },
 
   sectionTitle: { fontSize: 17, fontWeight: "700", marginLeft: 16, marginBottom: 8, marginTop: 4, color: "#272d3b" },
 
