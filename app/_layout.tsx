@@ -15,6 +15,9 @@ export default function RootLayout() {
         
         <Stack.Screen name="pages/app_detection/app_detection" options={{ title: "App Permission Analyzer" }} />
         <Stack.Screen name="pages/app_detection/scan_result" options={{ title: "Scan Result" }} />
+
+        <Stack.Screen name="pages/breach_check/breach" options={{ title: "Breach Checker" }} />
+        <Stack.Screen name="pages/breach_check/breach_result" options={{ title: "Breach Result" }} />
       </Stack>
       <StatusBar style="dark" />
     </>

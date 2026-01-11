@@ -1,22 +1,22 @@
-import { analyzePhisingAttempt } from '@/services/calls/gemini'
-import { setLastPhishingResult } from '@/services/storage/phishingStore'
+import { breachCheck } from '@/services/calls/breach'
+import { setLastBreachResult } from '@/services/storage/breachStore'
 import { router } from 'expo-router'
 import React, { useState } from 'react'
 import {
-  ActivityIndicator,
-  Dimensions,
-  FlatList,
-  Modal,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    FlatList,
+    Modal,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 
 const { width } = Dimensions.get('window')
 
-type Tab = 'Email' | 'SMS' | 'URL'
+type Tab = 'Email Check' | 'Password Check'
 type Scan = {
   id: string
   title: string
@@ -28,31 +28,32 @@ type Scan = {
 const initialScans: Scan[] = [
   {
     id: '1',
-    title: 'Your account has been suspended. Click here to verify...',
+    title: 'email@example.com found in 3 breaches',
     time: '16:32',
     risk: 'HIGH',
-    score: 92,
+    score: 94,
   },
   {
     id: '2',
-    title: 'Win a free gift card now — confirm details',
+    title: 'Password exposed on paste site',
     time: '15:05',
     risk: 'MEDIUM',
-    score: 58,
+    score: 55,
   },
 ]
 
-type PhishingHeaderProps = {
+type BreachHeaderProps = {
   activeTab: Tab
   setActiveTab: (t: Tab) => void
   text: string
   setText: (s: string) => void
+  emailValid: boolean
   loading: boolean
-  onAnalyze: () => void
   scansLength: number
+  onAnalyze: () => void
 }
 
-function PhishingScanHeader({ activeTab, setActiveTab, text, setText, loading, onAnalyze, scansLength }: PhishingHeaderProps) {
+function BreachScanHeader({ activeTab, setActiveTab, text, setText, emailValid, loading, scansLength, onAnalyze }: BreachHeaderProps) {
   const renderTab = (tab: Tab) => (
     <TouchableOpacity
       key={tab}
@@ -66,43 +67,48 @@ function PhishingScanHeader({ activeTab, setActiveTab, text, setText, loading, o
   return (
     <View style={styles.content}>
       <View style={styles.headerRow}>
-        <Text style={styles.headerTitle}>Phishing Detector</Text>
+        <Text style={styles.headerTitle}>Breach Exposure Checker</Text>
         <Text style={styles.headerAction}>⟳</Text>
       </View>
-      <Text style={styles.headerSubtitle}>AI-powered threat analysis</Text>
+      <Text style={styles.headerSubtitle}>Check if your email or password appeared in known data breaches</Text>
 
       <View style={styles.card}>
-        <View style={styles.tabRow}>
-          {(['Email', 'SMS', 'URL'] as Tab[]).map(renderTab)}
-        </View>
+        <View style={styles.tabRow}>{(['Email Check', 'Password Check'] as Tab[]).map(renderTab)}</View>
 
-        <Text style={styles.label}>Paste {activeTab} Content</Text>
+        <Text style={styles.label}>{activeTab === 'Email Check' ? 'Email Address' : 'Password'}</Text>
         <TextInput
           style={styles.textArea}
-          multiline
-          placeholder={`Paste ${activeTab} content here...`}
+          placeholder={activeTab === 'Email Check' ? 'Enter email address' : 'Enter password (never stored)'}
           value={text}
           onChangeText={setText}
-          numberOfLines={5}
-          textAlignVertical="top"
+          keyboardType={activeTab === 'Email Check' ? 'email-address' : 'default'}
+          secureTextEntry={activeTab === 'Password Check'}
+          autoCapitalize="none"
+          textContentType={activeTab === 'Email Check' ? 'emailAddress' : 'none'}
         />
+        {activeTab === 'Email Check' && text.trim() !== '' && !emailValid && (
+          <Text style={styles.errorText}>Please enter a valid email address.</Text>
+        )}
+        {activeTab === 'Password Check' && (
+          <Text style={styles.helperText}>Password is checked using k-anonymity. It is never sent or stored.</Text>
+        )}
 
-        <TouchableOpacity style={styles.analyzeBtn} disabled={loading} onPress={onAnalyze}>
-          <Text style={styles.analyzeBtnText}>Analyze Content</Text>
+        <TouchableOpacity style={[styles.analyzeBtn, (loading || (activeTab === 'Email Check' && !emailValid)) && styles.analyzeBtnDisabled]} disabled={loading || (activeTab === 'Email Check' && !emailValid)} onPress={onAnalyze}>
+          <Text style={styles.analyzeBtnText}>{activeTab === 'Email Check' ? 'Check Email Exposure' : 'Check Password Exposure'}</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.tipsCard}>
-        <Text style={styles.tipsTitle}>🛡️ Security Tips</Text>
-        <Text style={styles.tip}>• Never share passwords or sensitive info via email/SMS</Text>
-        <Text style={styles.tip}>• Verify sender identity through official channels</Text>
-        <Text style={styles.tip}>• Hover over links to check actual destination</Text>
-        <Text style={styles.tip}>• Be suspicious of urgent or threatening messages</Text>
+        <Text style={styles.tipsTitle}>🔐 Security Tips</Text>
+        <Text style={styles.tip}>• Use unique passwords for every site</Text>
+        <Text style={styles.tip}>• Enable 2FA wherever possible</Text>
+        <Text style={styles.tip}>• Change passwords after a breach</Text>
+        <Text style={styles.tip}>• Never reuse breached passwords</Text>
       </View>
 
       <View style={styles.recent}>
         <View style={styles.recentHeader}>
-          <Text style={styles.recentTitle}>Recent Scans</Text>
+          <Text style={styles.recentTitle}>Recent Checks</Text>
           <Text style={styles.scanCount}>{scansLength} scans</Text>
         </View>
       </View>
@@ -110,32 +116,85 @@ function PhishingScanHeader({ activeTab, setActiveTab, text, setText, loading, o
   )
 }
 
-export default function Phishing() {
-  const [activeTab, setActiveTab] = useState<Tab>('Email')
+export default function Breach() {
+  const [activeTab, setActiveTab] = useState<Tab>('Email Check')
   const [text, setText] = useState('')
   const [scans, setScans] = useState<Scan[]>(initialScans)
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false)
+  // Simple email validation (must contain '@' and '.')
+  const emailValid = activeTab === 'Email Check' ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text.trim()) : true
 
-  const analyze = async() => {
-    if (!text.trim()){
+  const analyze = async () => {
+    if (!text.trim()) {
       const emptyInputAlert = 'Please enter some content to analyze.'
       alert(emptyInputAlert)
-      return 
+      return
     }
-    setLoading(true);
-  try {
-    const analysis = await analyzePhisingAttempt(text, activeTab.toUpperCase() as any);
-    setLoading(false);
-    setText('');
-    // Store result in memory (avoid sending potentially sensitive data as URL params)
-    setLastPhishingResult({ risk: analysis.risk, score: analysis.score, reason: analysis.reason, content: text.slice(0, 200) + '...' })
-    router.push({ pathname: '/pages/phishing/scan_result' })
-  } catch (error) {
-    
-    setLoading(false);
-    const errorMessage = error;
-    alert(errorMessage);
-  } 
+
+    // If checking email, ensure it looks valid
+    if (activeTab === 'Email Check' && !emailValid) {
+      alert('Please enter a valid email address.')
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      if (activeTab === 'Email Check') {
+        const res = await breachCheck(text.trim(), 'Email')
+        setLoading(false)
+        const breachesCount = res.breaches.length
+        let risk: 'LOW' | 'MEDIUM' | 'HIGH' = 'LOW'
+        let score = 100
+        if (breachesCount === 0) {
+          risk = 'LOW'
+          score = 100
+        } else if (breachesCount <= 2) {
+          risk = 'MEDIUM'
+          score = 60
+        } else {
+          risk = 'HIGH'
+          score = breachesCount >= 5 ? 20 : 40
+        }
+        const reason = breachesCount === 0 ? 'No breaches found for this email.' : `Found in ${breachesCount} breach(es): ${res.breaches.slice(0,3).map(b => b.Name).join(', ')}`
+
+        // Store result in memory (avoid sending sensitive data as URL params)
+        setLastBreachResult({ risk, score, reason, content: text.trim() })
+        router.push({ pathname: '/pages/breach_check/breach_result' })
+        setText('')
+        return
+      }
+
+      // Password check
+      const res = await breachCheck(text, 'PASSWORD')
+      setLoading(false)
+      const count = res.count
+      let risk: 'LOW' | 'MEDIUM' | 'HIGH' = 'LOW'
+      let score = 100
+      if (count === 0) {
+        risk = 'LOW'
+        score = 100
+      } else if (count < 100) {
+        risk = 'MEDIUM'
+        score = 70
+      } else if (count < 1000) {
+        risk = 'HIGH'
+        score = 40
+      } else {
+        risk = 'HIGH'
+        score = 20
+      }
+      const reason = count === 0 ? 'Password not found in Pwned Passwords.' : `Found ${count} times in Pwned Passwords.`
+
+      // Store result in memory (avoid sending sensitive data as URL params)
+      setLastBreachResult({ risk, score, reason, content: 'Password (hidden for security)' })
+      router.push({ pathname: '/pages/breach_check/breach_result' })
+      setText('')
+    } catch (error: any) {
+      setLoading(false)
+      const message = error?.message || 'An error occurred during analysis'
+      alert(message)
+    }
   }
 
   const renderTab = (tab: Tab) => (
@@ -166,26 +225,23 @@ export default function Phishing() {
     )
   }
 
-  
-
   return (
     <View style={styles.container}>
-          <FlatList
-            data={scans}
-            keyExtractor={i => i.id}
-            renderItem={ScanHistory}
-            ListHeaderComponent={<PhishingScanHeader activeTab={activeTab} setActiveTab={setActiveTab} text={text} setText={setText} loading={loading} onAnalyze={analyze} scansLength={scans.length} />}
-            keyboardShouldPersistTaps="handled"
-            ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-            contentContainerStyle={{ paddingBottom: 40 }}
-          />
+      <FlatList
+        data={scans}
+        keyExtractor={(i) => i.id}
+        renderItem={ScanHistory}
+        ListHeaderComponent={<BreachScanHeader activeTab={activeTab} setActiveTab={setActiveTab} text={text} setText={setText} emailValid={emailValid} loading={loading} scansLength={scans.length} onAnalyze={analyze} />}
+        keyboardShouldPersistTaps="handled"
+        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+        contentContainerStyle={{ paddingBottom: 40 }}
+      />
 
-        {/* --- LOADING OVERLAY --- */}
       <Modal transparent visible={loading} animationType="fade">
         <View style={styles.overlay}>
           <View style={styles.loaderContainer}>
             <ActivityIndicator size="large" color="#2563EB" />
-            <Text style={styles.loaderText}>Analyzing with AI...</Text>
+            <Text style={styles.loaderText}>Checking breach databases...</Text>
           </View>
         </View>
       </Modal>
@@ -226,15 +282,15 @@ const styles = StyleSheet.create({
 
   label: { marginBottom: 8, color: '#64748B', fontSize: 13 },
   textArea: {
-    minHeight: 110,
-    maxHeight: 220,
+    minHeight: 56,
     borderRadius: 10,
     backgroundColor: '#F8FAFF',
     padding: 12,
     borderWidth: 1,
     borderColor: '#E6EEF8',
-    marginBottom: 12,
+    marginBottom: 8,
   },
+  helperText: { color: '#475569', fontSize: 12, marginBottom: 8 },
   analyzeBtn: {
     backgroundColor: '#2563EB',
     paddingVertical: 12,
@@ -300,5 +356,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1E293B',
   },
+  errorText: { color: '#FF4D4F', fontSize: 12, marginBottom: 8 },
 })
-
