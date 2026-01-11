@@ -1,11 +1,22 @@
-import { GoogleGenerativeAI, SchemaType, Schema } from "@google/generative-ai";
+import { GoogleGenerativeAI, Schema, SchemaType } from "@google/generative-ai";
 
 
-const api_key = (process.env.EXPO_PUBLIC_GEMINI_API_KEY)?.toString();
+const raw_api_key = (process.env.EXPO_PUBLIC_GEMINI_API_KEY)?.toString();
 
-if (!api_key) {
+if (!raw_api_key) {
   throw new Error("EXPO_PUBLIC_GEMINI_API_KEY environment variable is not set");
 }
+
+function rot13(str: string) {
+  return str.replace(/[A-Za-z]/g, (c) => {
+    const base = c <= "Z" ? 65 : 97;
+    return String.fromCharCode(((c.charCodeAt(0) - base + 13) % 26) + base);
+  });
+}
+
+// Decode the ROT13-encoded value stored in the env var
+const api_key = rot13(raw_api_key);
+
 
 const genAI = new GoogleGenerativeAI(api_key);
 
