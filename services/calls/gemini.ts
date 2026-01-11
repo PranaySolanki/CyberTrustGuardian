@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI, SchemaType, Schema } from "@google/generative-ai";
 
+
 const api_key = (process.env.EXPO_PUBLIC_GEMINI_API_KEY)?.toString();
 
 if (!api_key) {
