@@ -93,7 +93,7 @@ export const analyzePhisingAttempt = async (content: string, type: 'EMAIL' | 'SM
     }
 };
 
-export const analyzeQrCode = async (content: string, type: 'EMAIL' | 'SMS' | 'URL') => {
+export const analyzeQrCode = async (content: string) => {
     const prompt = `
         ACT AS A SPECIALIST IN QR THREAT INTELLIGENCE (QUISHING).
         YOUR TASK: Analyze the provided URL extracted from a QR Code scan.
