@@ -31,9 +31,7 @@ const mockApps: AppItem[] = [
 ];
 
 export default function AppDetection() {
-
   const [selectedApk, setSelectedApk] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
-
   const [isScanning, setIsScanning] = useState(false);
   const router = useRouter();
 
@@ -47,7 +45,6 @@ export default function AppDetection() {
   } | null>(null);
 
   const apkHandleScan = async (asset?: DocumentPicker.DocumentPickerAsset | any) => {
-    // If called from button onPress, asset will be an Event object, so ignore it
     const isAsset = asset && asset.uri;
     const targetApk = isAsset ? asset : selectedApk;
 
@@ -77,7 +74,6 @@ export default function AppDetection() {
 
       if (response.ok) {
         setAnalysisResult(data);
-
         if (data.permissions && data.permissions.length === 0) {
           Alert.alert("Scan Complete", "No permissions found.");
         }
@@ -98,11 +94,9 @@ export default function AppDetection() {
         type: "application/vnd.android.package-archive",
       });
 
-      // Check if the user didn't cancel and assets exist
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
         setSelectedApk(asset);
-        // Automatically scan the selected APK
         await apkHandleScan(asset);
       }
     } catch (error) {
@@ -119,7 +113,7 @@ export default function AppDetection() {
           </View>
           <Text style={styles.appName}>{item.name}</Text>
         </View>
-          <TouchableOpacity style={styles.scanBtn} onPress={handleScan}>
+        <TouchableOpacity style={styles.scanBtn} onPress={handleScan}>
           <Text style={styles.scanText}>Scan</Text>
         </TouchableOpacity>
       </View>
@@ -127,7 +121,7 @@ export default function AppDetection() {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <Text style={styles.title}>App Permission Analyzer</Text>
       <Text style={styles.subtitle}>
         Identify apps with excessive permissions
@@ -136,8 +130,8 @@ export default function AppDetection() {
       {/* ✅ APK SELECTOR BLOCK */}
       <View style={styles.apkBlock}>
         <View style={styles.apkTextBox}>
-        <Text style={styles.apkText}>
-          {selectedApk ? selectedApk.name : "No APK Selected"}
+          <Text style={styles.apkText}>
+            {selectedApk ? selectedApk.name : "No APK Selected"}
           </Text>
         </View>
 
@@ -156,7 +150,7 @@ export default function AppDetection() {
         </TouchableOpacity>
       </View>
 
-      {/* ✅ SCAN BUTTON - Appears after APK is selected */}
+      {/* ✅ SCAN BUTTON */}
       {selectedApk && (
         <TouchableOpacity style={styles.scanApkButton} onPress={apkHandleScan} disabled={isScanning}>
           {isScanning ? (
@@ -170,48 +164,55 @@ export default function AppDetection() {
         </TouchableOpacity>
       )}
 
-
-      {/* --- PERMISSIONS DISPLAY SECTION --- */}
-{analysisResult && (
-  <View style={styles.resultContainer}>
-    <View style={styles.resultHeader}>
-      <Ionicons name="apps" size={20} color="#2563EB" />
-      <Text style={styles.resultPkgName}>{analysisResult.package_name}</Text>
-    </View>
-
-    <Text style={styles.permissionTitle}>
-      Requested Permissions ({analysisResult.permissions.length})
-    </Text>
-
-    <View style={styles.permissionList}>
-      {analysisResult.permissions.map((perm, index) => {
-        // Clean the permission name (e.g., android.permission.CAMERA -> CAMERA)
-        const shortPerm = perm.split('.').pop();
-        const isDangerous = ["CAMERA", "RECORD_AUDIO", "READ_SMS", "ACCESS_FINE_LOCATION"].includes(shortPerm || "");
-
-        return (
-          <View key={index} style={[styles.permBadge, isDangerous && styles.dangerBadge]}>
-            <Text style={[styles.permText, isDangerous && styles.dangerText]}>
-              {shortPerm}
-            </Text>
-            {isDangerous && <Ionicons name="alert-circle" size={12} color="#DC2626" style={{marginLeft: 4}} />}
+      {/* --- SCROLLABLE PERMISSIONS DISPLAY SECTION --- */}
+      {analysisResult && (
+        <View style={styles.resultContainer}>
+          <View style={styles.resultHeader}>
+            <Ionicons name="apps" size={20} color="#2563EB" />
+            <Text style={styles.resultPkgName}>{analysisResult.package_name}</Text>
           </View>
-        );
-      })}
-    </View>
-    
-  </View>
-)}
 
-      {/* ✅ APP LIST */}
-      <FlatList
-        data={mockApps}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 30 }}
-      />
-    </View>
+          <Text style={styles.permissionTitle}>
+            Requested Permissions ({analysisResult.permissions.length})
+          </Text>
+
+          {/* Nested ScrollView for permissions */}
+          <View style={styles.scrollArea}>
+            <ScrollView 
+              nestedScrollEnabled={true} 
+              contentContainerStyle={styles.permissionList}
+              showsVerticalScrollIndicator={true}
+            >
+              {analysisResult.permissions.map((perm, index) => {
+                const shortPerm = perm.split('.').pop();
+                const isDangerous = ["CAMERA", "RECORD_AUDIO", "READ_SMS", "ACCESS_FINE_LOCATION"].includes(shortPerm || "");
+
+                return (
+                  <View key={index} style={[styles.permBadge, isDangerous && styles.dangerBadge]}>
+                    <Text style={[styles.permText, isDangerous && styles.dangerText]}>
+                      {shortPerm}
+                    </Text>
+                    {isDangerous && <Ionicons name="alert-circle" size={12} color="#DC2626" style={{ marginLeft: 4 }} />}
+                  </View>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      )}
+
+      {/* ✅ APP LIST - Note: Changed to map since we are inside a ScrollView */}
+      <View style={{ marginTop: 10 }}>
+        {mockApps.map((item) => (
+          <View key={item.id}>
+             {renderItem({ item })}
+          </View>
+        ))}
+      </View>
+      
+      {/* Spacer for bottom padding */}
+      <View style={{ height: 40 }} />
+    </ScrollView>
   );
 }
 
@@ -222,25 +223,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
   },
-
   title: {
     fontSize: 22,
     fontWeight: "700",
     color: "#0F172A",
   },
-
   subtitle: {
     color: "#475569",
     marginBottom: 12,
   },
-
-  // ✅ APK BLOCK
   apkBlock: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 18,
   },
-
   apkTextBox: {
     flex: 1,
     backgroundColor: "#FFFFFF",
@@ -251,26 +247,21 @@ const styles = StyleSheet.create({
     borderColor: "#E2E8F0",
     marginRight: 10,
   },
- 
   apkText: {
     color: "#334155",
     fontSize: 13,
   },
-
   apkButton: {
     backgroundColor: "#2563EB",
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 10,
   },
-
   apkButtonText: {
     color: "#FFFFFF",
     fontWeight: "600",
     fontSize: 13,
   },
-
-  // ✅ SCAN APK BUTTON
   scanApkButton: {
     backgroundColor: "#10B981",
     flexDirection: "row",
@@ -285,15 +276,12 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  
   scanApkButtonText: {
     color: "#FFFFFF",
     fontWeight: "700",
     fontSize: 16,
     marginLeft: 8,
   },
-
-  // ✅ CARD UI
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 14,
@@ -307,12 +295,10 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
-
   left: {
     flexDirection: "row",
     alignItems: "center",
   },
-
   iconBox: {
     width: 36,
     height: 36,
@@ -322,70 +308,33 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 12,
   },
-
   appName: {
     fontSize: 15,
     fontWeight: "600",
     color: "#0F172A",
   },
-
   scanBtn: {
     backgroundColor: "#2563EB",
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 20,
   },
-
   scanText: {
     color: "#fff",
     fontWeight: "600",
     fontSize: 13,
   },
-
-  // ✅ PERMISSIONS STYLES
-  permissionsContainer: {
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 20,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    borderWidth: 1,
-    borderColor: "#F1F5F9",
-  },
-  permissionsTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#0F172A",
-    marginBottom: 12,
-  },
-  permissionItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-    paddingVertical: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F8FAFC",
-  },
-  permissionText: {
-    marginLeft: 8,
-    fontSize: 13,
-    color: "#334155",
-    fontFamily: "System", // Just to be safe
-  },
   resultContainer: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 17,
-    marginTop: 15,
+    marginTop: 5,
     borderWidth: 1,
     borderColor: "#E2E8F0",
     shadowColor: "#000",
     shadowOpacity: 0.05,
     elevation: 2,
-    marginBottom:12
+    marginBottom: 12
   },
   resultHeader: {
     flexDirection: "row",
@@ -405,10 +354,17 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textTransform: "uppercase",
   },
+  scrollArea: {
+    maxHeight: 200, // Limits the height of the permission block
+    borderRadius: 8,
+    backgroundColor: "#F9FBFF",
+    padding: 5,
+  },
   permissionList: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
+    paddingBottom: 10,
   },
   permBadge: {
     backgroundColor: "#F1F5F9",
@@ -432,6 +388,5 @@ const styles = StyleSheet.create({
   dangerText: {
     color: "#DC2626",
     fontWeight: "700",
- 
   },
 });
