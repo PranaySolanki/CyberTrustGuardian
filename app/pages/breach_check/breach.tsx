@@ -1,17 +1,18 @@
 import { breachCheck } from '@/services/calls/breach'
 import { setLastBreachResult } from '@/services/storage/breachStore'
+import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
-    ActivityIndicator,
-    Dimensions,
-    FlatList,
-    Modal,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  FlatList,
+  Modal,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 
 const { width } = Dimensions.get('window')
@@ -51,9 +52,11 @@ type BreachHeaderProps = {
   loading: boolean
   scansLength: number
   onAnalyze: () => void
-}
+  showPassword: boolean
+  setShowPassword: (v: boolean) => void
+} 
 
-function BreachScanHeader({ activeTab, setActiveTab, text, setText, emailValid, loading, scansLength, onAnalyze }: BreachHeaderProps) {
+function BreachScanHeader({ activeTab, setActiveTab, text, setText, emailValid, loading, scansLength, onAnalyze, showPassword, setShowPassword }: BreachHeaderProps) {
   const renderTab = (tab: Tab) => (
     <TouchableOpacity
       key={tab}
@@ -76,16 +79,36 @@ function BreachScanHeader({ activeTab, setActiveTab, text, setText, emailValid, 
         <View style={styles.tabRow}>{(['Email Check', 'Password Check'] as Tab[]).map(renderTab)}</View>
 
         <Text style={styles.label}>{activeTab === 'Email Check' ? 'Email Address' : 'Password'}</Text>
-        <TextInput
-          style={styles.textArea}
-          placeholder={activeTab === 'Email Check' ? 'Enter email address' : 'Enter password (never stored)'}
-          value={text}
-          onChangeText={setText}
-          keyboardType={activeTab === 'Email Check' ? 'email-address' : 'default'}
-          secureTextEntry={activeTab === 'Password Check'}
-          autoCapitalize="none"
-          textContentType={activeTab === 'Email Check' ? 'emailAddress' : 'none'}
-        />
+
+        {activeTab === 'Password Check' ? (
+          <View style={styles.passwordWrapper}>
+            <TextInput
+              style={[styles.textArea, { flex: 1, marginRight: 8 }]}
+              placeholder={'Enter password (never stored)'}
+              value={text}
+              onChangeText={setText}
+              keyboardType={'default'}
+              secureTextEntry={!showPassword}
+              autoCapitalize={'none'}
+              textContentType={'password'}
+            />
+            <TouchableOpacity style={styles.eyeButton} onPress={() => setShowPassword(!showPassword)} accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}>
+              <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={22} color={'#475569'} />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TextInput
+            style={styles.textArea}
+            placeholder={'Enter email address'}
+            value={text}
+            onChangeText={setText}
+            keyboardType={'email-address'}
+            secureTextEntry={false}
+            autoCapitalize={'none'}
+            textContentType={'emailAddress'}
+          />
+        )}
+
         {activeTab === 'Email Check' && text.trim() !== '' && !emailValid && (
           <Text style={styles.errorText}>Please enter a valid email address.</Text>
         )}
@@ -121,8 +144,22 @@ export default function Breach() {
   const [text, setText] = useState('')
   const [scans, setScans] = useState<Scan[]>(initialScans)
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+
+
+  useEffect(() => {
+    if (activeTab !== 'Password Check') setShowPassword(false)
+  }, [activeTab])
+
+
+
   // Simple email validation (must contain '@' and '.')
   const emailValid = activeTab === 'Email Check' ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text.trim()) : true
+
+  // Handle text changes (previous simple behavior)
+  const handleTextChange = (s: string) => {
+    setText(s)
+  }
 
   const analyze = async () => {
     if (!text.trim()) {
@@ -231,7 +268,7 @@ export default function Breach() {
         data={scans}
         keyExtractor={(i) => i.id}
         renderItem={ScanHistory}
-        ListHeaderComponent={<BreachScanHeader activeTab={activeTab} setActiveTab={setActiveTab} text={text} setText={setText} emailValid={emailValid} loading={loading} scansLength={scans.length} onAnalyze={analyze} />}
+        ListHeaderComponent={<BreachScanHeader activeTab={activeTab} setActiveTab={setActiveTab} text={text} setText={handleTextChange} emailValid={emailValid} loading={loading} scansLength={scans.length} onAnalyze={analyze} showPassword={showPassword} setShowPassword={setShowPassword} />}
         keyboardShouldPersistTaps="handled"
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         contentContainerStyle={{ paddingBottom: 40 }}
@@ -357,4 +394,6 @@ const styles = StyleSheet.create({
     color: '#1E293B',
   },
   errorText: { color: '#FF4D4F', fontSize: 12, marginBottom: 8 },
+  passwordWrapper: { flexDirection: 'row', alignItems: 'center' },
+  eyeButton: { padding: 8, backgroundColor: '#F8FAFF', borderRadius: 8 },
 })
