@@ -1,4 +1,4 @@
-import { clearLastPhishingResult, getLastPhishingResult } from '@/services/storage/phishingStore';
+import { clearLastPhishingResult, getLastPhishingResult, setQuizContext } from '@/services/storage/phishingStore';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -29,10 +29,16 @@ export default function PhishingScanResult() {
 
   const { risk, score, reason, content } = data
 
+  const handleTakeQuiz = () => {
+    if (!content) return;
+    setQuizContext({ content, type: 'EMAIL' }); // TODO: Pass actual type
+    router.push('/pages/phishing/quiz');
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.header}>Scan Analysis Result</Text>
-      
+
       <View style={styles.resultBox}>
         <Text style={styles.label}>Risk Level:</Text>
         <Text style={[styles.value, { color: risk === 'HIGH' ? 'red' : 'green' }]}>
@@ -47,6 +53,13 @@ export default function PhishingScanResult() {
 
         <Text style={styles.label}>Original Content:</Text>
         <Text style={styles.contentPreview} numberOfLines={3}>{content}</Text>
+      </View>
+
+      {/* Quiz Section */}
+      <View style={styles.quizSection}>
+        <TouchableOpacity style={styles.quizButton} onPress={handleTakeQuiz}>
+          <Text style={styles.quizButtonText}>🎓 Take Cyber IQ Quiz</Text>
+        </TouchableOpacity>
       </View>
 
       <TouchableOpacity style={styles.button} onPress={() => router.dismiss()}>
@@ -65,5 +78,10 @@ const styles = StyleSheet.create({
   reasonText: { fontSize: 16, lineHeight: 22, marginTop: 4, color: '#333' },
   contentPreview: { fontSize: 14, fontStyle: 'italic', color: '#888', marginTop: 4 },
   button: { marginTop: 30, backgroundColor: '#2563EB', padding: 15, borderRadius: 8, alignItems: 'center' },
-  buttonText: { color: '#fff', fontWeight: 'bold' }
+  buttonText: { color: '#fff', fontWeight: 'bold' },
+
+  // Quiz Styles
+  quizSection: { marginTop: 24, marginBottom: 10 },
+  quizButton: { backgroundColor: '#8B5CF6', padding: 16, borderRadius: 12, alignItems: 'center', shadowColor: '#8B5CF6', shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
+  quizButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

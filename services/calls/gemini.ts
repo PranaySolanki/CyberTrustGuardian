@@ -48,19 +48,43 @@ const model = genAI.getGenerativeModel({
   model: "gemini-2.5-flash",
   generationConfig: {
     responseMimeType: "application/json",
-    responseSchema: schema, 
+    responseSchema: schema,
+  },
+});
+
+const quizSchema: Schema = {
+  type: SchemaType.OBJECT,
+  description: "Cyber IQ Quiz",
+  properties: {
+    question: { type: SchemaType.STRING, nullable: false },
+    options: {
+      type: SchemaType.ARRAY,
+      items: { type: SchemaType.STRING },
+      nullable: false,
+    },
+    correctAnswerIndex: { type: SchemaType.NUMBER, nullable: false },
+    explanation: { type: SchemaType.STRING, nullable: false },
+  },
+  required: ["question", "options", "correctAnswerIndex", "explanation"],
+};
+
+const quizModel = genAI.getGenerativeModel({
+  model: "gemini-2.5-flash-lite",
+  generationConfig: {
+    responseMimeType: "application/json",
+    responseSchema: quizSchema,
   },
 });
 
 
 
 export const analyzePhisingAttempt = async (content: string, type: 'EMAIL' | 'SMS' | 'URL') => {
-    const typeSpecificInstructions = {
-        EMAIL: "Focus on brand impersonation, generic greetings, and mismatched link destinations, senders email address, tonality.",
-        SMS: "Focus on extreme urgency, link shorteners, and requests for OTP/KYC updates online via links if it tells to visit a physical branch then it might be safe yet not completely safe.",
-        URL: "Perform a deep domain audit. Check for homograph attacks (e.g., 'hbfc' vs 'hdfc') and character substitutions."
-    };
-    const prompt = `
+  const typeSpecificInstructions = {
+    EMAIL: "Focus on brand impersonation, generic greetings, and mismatched link destinations, senders email address, tonality.",
+    SMS: "Focus on extreme urgency, link shorteners, and requests for OTP/KYC updates online via links if it tells to visit a physical branch then it might be safe yet not completely safe.",
+    URL: "Perform a deep domain audit. Check for homograph attacks (e.g., 'hbfc' vs 'hdfc') and character substitutions."
+  };
+  const prompt = `
         ACT AS A SENIOR CYBERSECURITY THREAT ANALYST. 
         Perform a STRICT, ZERO-TRUST analysis on the provided content. 
         Analyze the following ${type} content for phishing attempts, suspicious links, 
@@ -72,6 +96,7 @@ export const analyzePhisingAttempt = async (content: string, type: 'EMAIL' | 'SM
         3. LINGUISTIC ANALYSIS: Check for "Panic Inducers" (e.g., "Account suspended," "Unauthorized login," "Action required within 1 hour").
         4. REQUEST AUDIT: Does it ask for sensitive info (OTP, Password, KYC updates) via an unofficial link?
         Perform a deep domain audit. Check for homograph attacks (e.g., 'hbfc' vs 'hdfc') and character substitutions.
+        even if it is a test website from google or someother organization if its for testing phishing dont consider it as a testing site consider it as real site and give high alert dont mention anything about it being a test site.
 
         TYPE-SPECIFIC FOCUS: ${typeSpecificInstructions[type]}
 
@@ -84,17 +109,17 @@ export const analyzePhisingAttempt = async (content: string, type: 'EMAIL' | 'SM
         Content to analyze: "${content}"
     `;
 
-    try {
-        const result = await model.generateContent(prompt);
-        return JSON.parse(result.response.text());
-    } catch (error) {
-        console.error("Gemini Analysis Error:", error);
-        throw error;
-    }
+  try {
+    const result = await model.generateContent(prompt);
+    return JSON.parse(result.response.text());
+  } catch (error) {
+    console.error("Gemini Analysis Error:", error);
+    throw error;
+  }
 };
 
 export const analyzeQrCode = async (content: string) => {
-    const prompt = `
+  const prompt = `
         ACT AS A SPECIALIST IN QR THREAT INTELLIGENCE (QUISHING).
         YOUR TASK: Analyze the provided URL extracted from a QR Code scan.
 
@@ -112,15 +137,54 @@ export const analyzeQrCode = async (content: string) => {
         "score": 0-100,
         "reason": "Detailed explanation of red flags (e.g., 'Hidden redirect detected' or 'Impersonation of [Brand]')"
         }
-
         QR CONTENT TO ANALYZE: "${content}"
     `;
 
-    try {
-        const result = await model.generateContent(prompt);
-        return JSON.parse(result.response.text());
-    } catch (error) {
-        console.error("Gemini Analysis Error:", error);
-        throw error;
-    }
+  try {
+    const result = await model.generateContent(prompt);
+    return JSON.parse(result.response.text());
+  } catch (error) {
+    console.error("Gemini Analysis Error:", error);
+    throw error;
+  }
+};
+
+export const generateCyberIQQuiz = async (scanContent: string, scanType: string) => {
+  const prompt = `
+        ACT AS A CYBERSECURITY EDUCATOR.
+        Based on the following ${scanType} scan content, generate a "Cyber IQ" quiz question to test the user's awareness.
+        
+        The goal is to educate the user on how to spot phishing or safe content similar to what they just scanned.
+        
+        INPUT CONTENT: "${scanContent}"
+
+        Your task:
+        1. Create a multiple-choice question (2 options) related to the risks or safety signs found in the input.
+        2. Provide two realistic options (e.g., descriptions of emails, URLs, or actions).
+        3. Identify the correct answer (the safe or correct action/identification).
+        4. Provide a brief educational explanation.
+    `;
+
+  try {
+    const result = await quizModel.generateContent(prompt);
+    const quizData = JSON.parse(result.response.text());
+
+    // Shuffle options to ensure randomness
+    const correctOption = quizData.options[quizData.correctAnswerIndex];
+    const shuffledOptions = quizData.options
+      .map((value: string) => ({ value, sort: Math.random() }))
+      .sort((a: any, b: any) => a.sort - b.sort)
+      .map(({ value }: { value: string }) => value);
+
+    const newCorrectIndex = shuffledOptions.indexOf(correctOption);
+
+    return {
+      ...quizData,
+      options: shuffledOptions,
+      correctAnswerIndex: newCorrectIndex
+    };
+  } catch (error) {
+    console.error("Gemini Quiz Generation Error:", error);
+    throw error;
+  }
 };

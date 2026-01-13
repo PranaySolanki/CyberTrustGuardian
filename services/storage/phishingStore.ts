@@ -1,18 +1,38 @@
-export type PhishingResult = {
-  risk: 'LOW' | 'MEDIUM' | 'HIGH'
-  score: number
-  reason: string
-  content: string
+type PhishingResult = {
+    risk?: string;
+    score?: number;
+    reason?: string;
+    content?: string;
 }
 
-let lastPhishingResult: PhishingResult | null = null
-
-export const setLastPhishingResult = (r: PhishingResult) => {
-  lastPhishingResult = r
+type QuizContext = {
+    content: string;
+    type: string;
 }
 
-export const getLastPhishingResult = (): PhishingResult | null => lastPhishingResult
+let lastResult: PhishingResult | null = null;
+let quizContext: QuizContext | null = null;
+
+export const setLastPhishingResult = (result: PhishingResult) => {
+    lastResult = result;
+};
+
+export const getLastPhishingResult = () => {
+    return lastResult;
+};
 
 export const clearLastPhishingResult = () => {
-  lastPhishingResult = null
-}
+    lastResult = null;
+};
+
+export const setQuizContext = (context: QuizContext) => {
+    quizContext = context;
+};
+
+export const getQuizContext = () => {
+    return quizContext;
+};
+
+export const clearQuizContext = () => {
+    quizContext = null;
+};
