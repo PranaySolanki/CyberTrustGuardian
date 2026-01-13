@@ -3,13 +3,15 @@ import * as DocumentPicker from "expo-document-picker";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
+import { API_BASE_URL } from "./config";
 
 type AppItem = {
   id: string;
@@ -29,69 +31,83 @@ const mockApps: AppItem[] = [
 
 export default function AppDetection() {
 
-  const [selectedApk, setSelectedApk] = useState<{ name: string; uri: string } | null>(null);
-  const [loading, setLoading] = useState(false); 
+  const [selectedApk, setSelectedApk] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
+
+  const [isScanning, setIsScanning] = useState(false);
   const router = useRouter();
 
-  const pickApk = async () => {
-  try {
-    const result = await DocumentPicker.getDocumentAsync({
+  const handleScan = () => {
+    router.push("/pages/app_detection/scan_result");
+  };
+
+  const [analysisResult, setAnalysisResult] = useState<{
+    package_name: string;
+    permissions: string[];
+  } | null>(null);
+
+  const apkHandleScan = async (asset?: DocumentPicker.DocumentPickerAsset | any) => {
+    // If called from button onPress, asset will be an Event object, so ignore it
+    const isAsset = asset && asset.uri;
+    const targetApk = isAsset ? asset : selectedApk;
+
+    if (!targetApk) return;
+
+    setIsScanning(true);
+    setAnalysisResult(null);
+
+    const formData = new FormData();
+    // @ts-ignore
+    formData.append("apk", {
+      uri: targetApk.uri,
+      name: targetApk.name,
       type: "application/vnd.android.package-archive",
     });
 
-    // Check if the user didn't cancel and assets exist
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      setSelectedApk({
-        name: result.assets[0].name,
-        uri: result.assets[0].uri,
+    try {
+      const response = await fetch(`${API_BASE_URL}/upload`, {
+        method: "POST",
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        body: formData,
       });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setAnalysisResult(data);
+
+        if (data.permissions && data.permissions.length === 0) {
+          Alert.alert("Scan Complete", "No permissions found.");
+        }
+      } else {
+        Alert.alert("Error", data.error || "Server error");
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Connection Failed", "Check backend server.");
+    } finally {
+      setIsScanning(false);
     }
-  } catch (error) {
-    console.log("APK selection error:", error);
-  }
-};
-const handleScan = () =>{
-  router.push("/pages/app_detection/scan_result");
-}
-const [analysisResult, setAnalysisResult] = useState<{
-  package_name: string;
-  permissions: string[];
-} | null>(null);
+  };
 
-const apkHandleScan = async () => {
-  if (!selectedApk) return;
+  const pickApk = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "application/vnd.android.package-archive",
+      });
 
-  setLoading(true);
-  const formData = new FormData();
-  formData.append("file", {
-    uri: selectedApk.uri,
-    name: selectedApk.name,
-    type: "application/vnd.android.package-archive",
-  } as any);
-
-  try {
-    const response = await fetch("http://192.168.1.34:5000/analyze", {
-      method: "POST",
-      body: formData,
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      // SET THE RESULT LOCALLY INSTEAD OF JUST NAVIGATING
-      setAnalysisResult(data);
-      
-      // Optional: You can still navigate if you want the full report
-      // router.push({ pathname: "/pages/app_detection/scan_result", params: { data: JSON.stringify(data) } });
-    } else {
-      Alert.alert("Error", data.error);
+      // Check if the user didn't cancel and assets exist
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setSelectedApk(asset);
+        // Automatically scan the selected APK
+        await apkHandleScan(asset);
+      }
+    } catch (error) {
+      console.log("APK selection error:", error);
     }
-  } catch (error) {
-    Alert.alert("Connection Failed", "Check backend server.");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const renderItem = ({ item }: { item: AppItem }) => {
     return (
@@ -124,20 +140,36 @@ const apkHandleScan = async () => {
           </Text>
         </View>
 
-        <TouchableOpacity style={styles.apkButton} onPress={pickApk}>
-          <Text style={styles.apkButtonText}>
-            {selectedApk ? "Change APK" : "Select APK"}
-          </Text>
+        <TouchableOpacity
+          style={[styles.apkButton, isScanning && { opacity: 0.7 }]}
+          onPress={pickApk}
+          disabled={isScanning}
+        >
+          {isScanning ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Text style={styles.apkButtonText}>
+              {selectedApk ? "Change APK" : "Select APK"}
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
 
       {/* ✅ SCAN BUTTON - Appears after APK is selected */}
       {selectedApk && (
-        <TouchableOpacity style={styles.scanApkButton} onPress={apkHandleScan}>
-          <Ionicons name="shield-checkmark" size={20} color="#FFFFFF" />
-          <Text style={styles.scanApkButtonText}>Scan Selected APK</Text>
+        <TouchableOpacity style={styles.scanApkButton} onPress={apkHandleScan} disabled={isScanning}>
+          {isScanning ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <>
+              <Ionicons name="shield-checkmark" size={20} color="#FFFFFF" />
+              <Text style={styles.scanApkButtonText}>Scan Selected APK</Text>
+            </>
+          )}
         </TouchableOpacity>
       )}
+
+
       {/* --- PERMISSIONS DISPLAY SECTION --- */}
 {analysisResult && (
   <View style={styles.resultContainer}>
@@ -307,7 +339,42 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "600",
     fontSize: 13,
-  },resultContainer: {
+  },
+
+  // ✅ PERMISSIONS STYLES
+  permissionsContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 20,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  permissionsTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#0F172A",
+    marginBottom: 12,
+  },
+  permissionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    paddingVertical: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F8FAFC",
+  },
+  permissionText: {
+    marginLeft: 8,
+    fontSize: 13,
+    color: "#334155",
+    fontFamily: "System", // Just to be safe
+  },
+  resultContainer: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 17,
