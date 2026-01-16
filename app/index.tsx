@@ -6,9 +6,16 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Platform,
+  useWindowDimensions,
 } from "react-native";
 
 export default function Index() {
+  const { width } = useWindowDimensions();
+  const isWeb = Platform.OS === "web";
+  const toolItemWidth = isWeb && width > 900 ? "48%" : "100%";
+  const toolItemMarginBottom = isWeb ? 12 : 18;
+  const toolListStyle = isWeb ? { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" } : {};
   return (
     <View style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container}>
@@ -66,7 +73,7 @@ export default function Index() {
 
         <View style={styles.toolList}>
           <Link href="/pages/phishing/phishing" style={{ textDecorationLine: "none" }}>
-            <View style={styles.toolItem}>
+            <View style={[styles.toolItem, { width: toolItemWidth, marginBottom: toolItemMarginBottom }] }>
               <View style={[styles.toolIcon, { backgroundColor: "#ff6b6b" }]}>
                 <Text style={styles.toolIconEmoji}>✉️</Text>
               </View>
@@ -79,7 +86,7 @@ export default function Index() {
           </Link>
 
           <Link href="/pages/qr_scanner/qr_scanner" style={{ textDecorationLine: "none" }}>
-            <View style={styles.toolItem}>
+            <View style={[styles.toolItem, { width: toolItemWidth, marginBottom: toolItemMarginBottom }] }>
               <View style={[styles.toolIcon, { backgroundColor: "#4d9cff" }]}>
                 <Text style={styles.toolIconEmoji}>📸</Text>
               </View>
@@ -92,7 +99,7 @@ export default function Index() {
           </Link>
 
           <Link href="/pages/app_detection/app_detection" style={{ textDecorationLine: "none" }}>
-            <View style={styles.toolItem}>
+            <View style={[styles.toolItem, { width: toolItemWidth, marginBottom: toolItemMarginBottom }] }>
               <View style={[styles.toolIcon, { backgroundColor: "#a77bff" }]}>
                 <Text style={styles.toolIconEmoji}>🔒</Text>
               </View>
@@ -112,6 +119,14 @@ export default function Index() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.toolTitle}>Device Integrity Check</Text>
                 <Text style={styles.toolSub}>Root & emulator detection</Text>
+          <Link href="/pages/breach_check/breach" style={{ textDecorationLine: "none" }}>
+            <View style={[styles.toolItem, { width: toolItemWidth, marginBottom: toolItemMarginBottom }] }>
+              <View style={[styles.toolIcon, { backgroundColor: "#ffd166" }]}>
+                <Text style={styles.toolIconEmoji}>🔐</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.toolTitle}>Breach Exposure Checker</Text>
+                <Text style={styles.toolSub}>Check emails and passwords against breach databases</Text>
               </View>
               <Text style={styles.chev}>›</Text>
             </View>
@@ -182,8 +197,8 @@ const styles = StyleSheet.create({
 
   sectionTitle: { fontSize: 17, fontWeight: "700", marginLeft: 16, marginBottom: 8, marginTop: 4, color: "#272d3b" },
 
-  activityGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", marginBottom: 5 },
-  activityCard: { width: "45%", marginLeft: 9, marginRight: 9, height: 145, backgroundColor: "#fff", borderRadius: 12, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: "#f1f5f9" },
+  activityGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", marginBottom: 5 },
+  activityCard: { width: "48%", height: 145, backgroundColor: "#fff", borderRadius: 12, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: "#f1f5f9" },
   activityIcon: { marginTop: 5, fontSize: 25, marginBottom: 6 },
   activityNumber: { marginTop: 12, fontSize: 30, fontWeight: "700" },
   activityLabel: { fontSize: 15, color: "#6b7280" },

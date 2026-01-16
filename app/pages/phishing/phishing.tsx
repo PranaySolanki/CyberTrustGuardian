@@ -1,8 +1,12 @@
-import { Link, router } from 'expo-router'
+import { analyzePhisingAttempt } from '@/services/calls/gemini'
+import { setLastPhishingResult } from '@/services/storage/phishingStore'
+import { router } from 'expo-router'
 import React, { useState } from 'react'
 import {
+  ActivityIndicator,
   Dimensions,
   FlatList,
+  Modal,
   StyleSheet,
   Text,
   TextInput,
@@ -38,32 +42,100 @@ const initialScans: Scan[] = [
   },
 ]
 
+type PhishingHeaderProps = {
+  activeTab: Tab
+  setActiveTab: (t: Tab) => void
+  text: string
+  setText: (s: string) => void
+  loading: boolean
+  onAnalyze: () => void
+  scansLength: number
+}
+
+function PhishingScanHeader({ activeTab, setActiveTab, text, setText, loading, onAnalyze, scansLength }: PhishingHeaderProps) {
+  const renderTab = (tab: Tab) => (
+    <TouchableOpacity
+      key={tab}
+      style={[styles.tab, activeTab === tab && styles.tabActive]}
+      onPress={() => setActiveTab(tab)}
+    >
+      <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
+    </TouchableOpacity>
+  )
+
+  return (
+    <View style={styles.content}>
+      <View style={styles.headerRow}>
+        <Text style={styles.headerTitle}>Phishing Detector</Text>
+        <Text style={styles.headerAction}>⟳</Text>
+      </View>
+      <Text style={styles.headerSubtitle}>AI-powered threat analysis</Text>
+
+      <View style={styles.card}>
+        <View style={styles.tabRow}>
+          {(['Email', 'SMS', 'URL'] as Tab[]).map(renderTab)}
+        </View>
+
+        <Text style={styles.label}>Paste {activeTab} Content</Text>
+        <TextInput
+          style={styles.textArea}
+          multiline
+          placeholder={`Paste ${activeTab} content here...`}
+          value={text}
+          onChangeText={setText}
+          numberOfLines={5}
+          textAlignVertical="top"
+        />
+
+        <TouchableOpacity style={styles.analyzeBtn} disabled={loading} onPress={onAnalyze}>
+          <Text style={styles.analyzeBtnText}>Analyze Content</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.tipsCard}>
+        <Text style={styles.tipsTitle}>🛡️ Security Tips</Text>
+        <Text style={styles.tip}>• Never share passwords or sensitive info via email/SMS</Text>
+        <Text style={styles.tip}>• Verify sender identity through official channels</Text>
+        <Text style={styles.tip}>• Hover over links to check actual destination</Text>
+        <Text style={styles.tip}>• Be suspicious of urgent or threatening messages</Text>
+      </View>
+
+      <View style={styles.recent}>
+        <View style={styles.recentHeader}>
+          <Text style={styles.recentTitle}>Recent Scans</Text>
+          <Text style={styles.scanCount}>{scansLength} scans</Text>
+        </View>
+      </View>
+    </View>
+  )
+}
+
 export default function Phishing() {
   const [activeTab, setActiveTab] = useState<Tab>('Email')
   const [text, setText] = useState('')
   const [scans, setScans] = useState<Scan[]>(initialScans)
+  const [loading, setLoading] = useState(false);
 
-  const analyze = () => {
+  const analyze = async() => {
     if (!text.trim()){
       const emptyInputAlert = 'Please enter some content to analyze.'
       alert(emptyInputAlert)
       return 
-    }else{
-    router.push('/pages/phishing/scan_result')
     }
-    // const base = Math.min(80, Math.max(5, Math.floor(text.length / 2)))
-    // const random = Math.floor(Math.random() * 20)
-    // const score = Math.min(99, base + random)
-    // const risk: Scan['risk'] = score > 75 ? 'HIGH' : score > 40 ? 'MEDIUM' : 'LOW'
-    // const newScan: Scan = {
-    //   id: String(Date.now()),
-    //   title: text.length ? text.slice(0, 60) : `${activeTab} content`,
-    //   time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    //   risk,
-    //   score,
-    // }
-    // setScans(prev => [newScan, ...prev])
-    // setText('')
+    setLoading(true);
+  try {
+    const analysis = await analyzePhisingAttempt(text, activeTab.toUpperCase() as any);
+    setLoading(false);
+    setText('');
+    // Store result in memory (avoid sending potentially sensitive data as URL params)
+    setLastPhishingResult({ risk: analysis.risk, score: analysis.score, reason: analysis.reason, content: text.slice(0, 200) + '...' })
+    router.push({ pathname: '/pages/phishing/scan_result' })
+  } catch (error) {
+    
+    setLoading(false);
+    const errorMessage = error;
+    alert(errorMessage);
+  } 
   }
 
   const renderTab = (tab: Tab) => (
@@ -76,52 +148,7 @@ export default function Phishing() {
     </TouchableOpacity>
   )
 
-  const ScanHeader = () => (
-      <View style={styles.content}>    
-        <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>Phishing Detector</Text>
-          <Text style={styles.headerAction}>⟳</Text>
-        </View>
-        <Text style={styles.headerSubtitle}>AI-powered threat analysis</Text>
 
-        <View style={styles.card}>
-          <View style={styles.tabRow}>
-            {(['Email', 'SMS', 'URL'] as Tab[]).map(renderTab)}
-          </View>
-
-          <Text style={styles.label}>Paste {activeTab} Content</Text>
-          <TextInput
-            style={styles.textArea}
-            multiline
-            placeholder={`Paste ${activeTab} content here...`}
-            value={text}
-            onChangeText={setText}
-            numberOfLines={5}
-            textAlignVertical="top"
-          />
-
-          <TouchableOpacity style={styles.analyzeBtn} onPress={analyze}>
-            <Text style={styles.analyzeBtnText}>Analyze Content</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.tipsCard}>
-          <Text style={styles.tipsTitle}>🛡️ Security Tips</Text>
-          <Text style={styles.tip}>• Never share passwords or sensitive info via email/SMS</Text>
-          <Text style={styles.tip}>• Verify sender identity through official channels</Text>
-          <Text style={styles.tip}>• Hover over links to check actual destination</Text>
-          <Text style={styles.tip}>• Be suspicious of urgent or threatening messages</Text>
-        </View>
-
-        <View style={styles.recent}>
-          <View style={styles.recentHeader}>
-            <Text style={styles.recentTitle}>Recent Scans</Text>
-            <Text style={styles.scanCount}>{scans.length} scans</Text>
-          </View>
-        </View>
-      </View>
-        
-    )
 
   const ScanHistory = ({ item }: { item: Scan }) => {
     const riskColor = item.risk === 'HIGH' ? '#FF4D4F' : item.risk === 'MEDIUM' ? '#FFA940' : '#2ECC71'
@@ -147,10 +174,21 @@ export default function Phishing() {
             data={scans}
             keyExtractor={i => i.id}
             renderItem={ScanHistory}
-            ListHeaderComponent={ScanHeader}
+            ListHeaderComponent={<PhishingScanHeader activeTab={activeTab} setActiveTab={setActiveTab} text={text} setText={setText} loading={loading} onAnalyze={analyze} scansLength={scans.length} />}
+            keyboardShouldPersistTaps="handled"
             ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
             contentContainerStyle={{ paddingBottom: 40 }}
           />
+
+        {/* --- LOADING OVERLAY --- */}
+      <Modal transparent visible={loading} animationType="fade">
+        <View style={styles.overlay}>
+          <View style={styles.loaderContainer}>
+            <ActivityIndicator size="large" color="#2563EB" />
+            <Text style={styles.loaderText}>Analyzing with AI...</Text>
+          </View>
+        </View>
+      </Modal>
     </View>
   )
 }
@@ -240,5 +278,27 @@ const styles = StyleSheet.create({
   scanMeta: { alignItems: 'flex-end', marginLeft: 8 },
   riskBadge: { borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 16, fontSize: 12 },
   score: { marginTop: 6, fontWeight: '700' },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Dims the background
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loaderContainer: {
+    backgroundColor: 'white',
+    padding: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  loaderText: {
+    marginTop: 15,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E293B',
+  },
 })
 

@@ -152,7 +152,7 @@ export default function AppDetection() {
 
       {/* ✅ SCAN BUTTON */}
       {selectedApk && (
-        <TouchableOpacity style={styles.scanApkButton} onPress={apkHandleScan} disabled={isScanning}>
+        <TouchableOpacity style={styles.scanApkButton} onPress={handleScan} disabled={isScanning}>
           {isScanning ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
