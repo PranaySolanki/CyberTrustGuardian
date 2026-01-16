@@ -1,24 +1,29 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { SecurityProvider } from "../context/SecurityContext";
+
+// import { LogBox } from 'react-native';
+// // Ignore all log notifications
+// LogBox.ignoreAllLogs();
 
 
 export default function RootLayout() {
-  return(
-    <>
+  return (
+    <SecurityProvider>
       <Stack>
-        <Stack.Screen name="index" options={{ title: "Home" }} />
+        <Stack.Screen name="index" options={{ title: "Home",headerShown: false }} />
         <Stack.Screen name="pages/phishing/phishing" options={{ title: "Phishing Detector" }} />
         <Stack.Screen name="pages/phishing/scan_result" options={{ title: "Scan Result" }} />
-        
+
         <Stack.Screen name="pages/qr_scanner/qr_scanner" options={{ title: "QR Code Detector" }} />
         <Stack.Screen name="pages/qr_scanner/scan_result" options={{ title: "Scan Result" }} />
-        
+
         <Stack.Screen name="pages/app_detection/app_detection" options={{ title: "App Permission Analyzer" }} />
         <Stack.Screen name="pages/app_detection/scan_result" options={{ title: "Scan Result" }} />
 
-        <Stack.Screen name="pages/device_health/device_health" options={{ title: "Device Health" }} />
+        <Stack.Screen name="pages/device_health/device_health" options={{ title: "Device Integrity Check" }} />
       </Stack>
       <StatusBar style="dark" />
-    </>
+    </SecurityProvider>
   );
 }

@@ -110,7 +110,7 @@ export default function Index() {
                 <Text style={styles.toolIconEmoji}>📱</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.toolTitle}>Device Health</Text>
+                <Text style={styles.toolTitle}>Device Integrity Check</Text>
                 <Text style={styles.toolSub}>Root & emulator detection</Text>
               </View>
               <Text style={styles.chev}>›</Text>
