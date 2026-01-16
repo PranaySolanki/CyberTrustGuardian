@@ -54,3 +54,15 @@ app.post('/upload', upload.single('apk'), async (req, res) => {
 app.listen(port, '0.0.0.0', () => {
   console.log(`APK Backend listening at http://0.0.0.0:${port}`);
 });
+const { playintegrity } = require('@googleapis/playintegrity');
+
+async function verifyIntegrityToken(token) {
+  const integrity = playintegrity('v1');
+  const response = await integrity.gateways.decodeIntegrityToken({
+    requestBody: { integrityToken: token }
+  });
+
+  // Google returns 'MEETS_DEVICE_INTEGRITY' if the hardware is genuine.
+  const verdict = response.data.deviceIntegrity.deviceRecognitionVerdict;
+  return verdict.includes('MEETS_DEVICE_INTEGRITY');
+}
