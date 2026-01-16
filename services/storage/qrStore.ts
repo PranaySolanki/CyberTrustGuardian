@@ -3,6 +3,8 @@ export type QRResult = {
   score: number
   reason: string
   content: string
+  safeBrowsingResult?: string | null
+  geminiResult?: string
 }
 
 let lastQrResult: QRResult | null = null

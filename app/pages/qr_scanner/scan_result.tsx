@@ -1,11 +1,11 @@
-import { clearLastQrResult, getLastQrResult } from '@/services/storage/qrStore'
+import { clearLastQrResult, getLastQrResult, QRResult } from '@/services/storage/qrStore'
 import * as Clipboard from 'expo-clipboard'
 import { router } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import { Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
 export default function ScanResult() {
-  const [data, setData] = useState<{ risk?: string; score?: number; reason?: string; content?: string } | null>(null)
+  const [data, setData] = useState<QRResult | null>(null)
 
   useEffect(() => {
     const last = getLastQrResult()
@@ -26,6 +26,53 @@ export default function ScanResult() {
 
   const handleOpen = async () => {
     if (!data?.content) return
+    
+    // Warn user if URL is high risk
+    if (data.risk === 'HIGH') {
+      Alert.alert(
+        'High Risk URL',
+        'This URL has been flagged as HIGH RISK. Opening it may expose you to malware, phishing, or other security threats. Are you sure you want to proceed?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Open Anyway',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await Linking.openURL(data.content!)
+              } catch (error) {
+                Alert.alert('Error', 'Unable to open the URL')
+              }
+            }
+          }
+        ]
+      )
+      return
+    }
+    
+    // Medium risk warning
+    if (data.risk === 'MEDIUM') {
+      Alert.alert(
+        'Medium Risk URL',
+        'This URL has some security concerns. Do you want to proceed?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Open',
+            onPress: async () => {
+              try {
+                await Linking.openURL(data.content!)
+              } catch (error) {
+                Alert.alert('Error', 'Unable to open the URL')
+              }
+            }
+          }
+        ]
+      )
+      return
+    }
+    
+    // Low risk - open directly
     try {
       await Linking.openURL(data.content)
     } catch (error) {
@@ -44,7 +91,7 @@ export default function ScanResult() {
     )
   }
 
-  const { risk, score, reason, content } = data
+  const { risk, score, reason, content, safeBrowsingResult, geminiResult } = data
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -62,11 +109,16 @@ export default function ScanResult() {
         <Text style={styles.label}>Safety Score:</Text>
         <Text style={styles.value}>{score}%</Text>
 
+        <Text style={styles.label}>Safe Browsing Result:</Text>
+        <Text style={[styles.resultText, { color: safeBrowsingResult?.includes('THREATS') ? '#FF4D4F' : '#2ECC71' }]}>
+          {safeBrowsingResult || 'Not available'}
+        </Text>
+
         <Text style={styles.label}>Conclusion:</Text>
-        <Text style={styles.reasonText}>{reason}</Text>
+        <Text style={styles.reasonText}>{geminiResult || reason}</Text>
       </View>
 
-      <View style={styles.actionRow}>
+      {/* <View style={styles.actionRow}>
         <TouchableOpacity style={styles.secondaryButton} onPress={handleCopy}>
           <Text style={styles.secondaryButtonText}>Copy</Text>
         </TouchableOpacity>
@@ -74,7 +126,7 @@ export default function ScanResult() {
         <TouchableOpacity style={styles.primaryButton} onPress={handleOpen}>
           <Text style={styles.primaryButtonText}>Open Link</Text>
         </TouchableOpacity>
-      </View>
+      </View> */}
 
       <TouchableOpacity style={styles.button} onPress={() => router.dismiss()}>
         <Text style={styles.buttonText}>Go Back</Text>
@@ -89,6 +141,7 @@ const styles = StyleSheet.create({
   resultBox: { padding: 15, backgroundColor: '#f9f9f9', borderRadius: 10, borderWidth: 1, borderColor: '#eee' },
   label: { fontSize: 14, color: '#666', marginTop: 15, fontWeight: '600' },
   value: { fontSize: 20, fontWeight: 'bold', marginTop: 4 },
+  resultText: { fontSize: 15, lineHeight: 20, marginTop: 4, fontWeight: '500' },
   reasonText: { fontSize: 16, lineHeight: 22, marginTop: 4, color: '#333' },
   contentPreview: { fontSize: 14, fontStyle: 'italic', color: '#888', marginTop: 4 },
   actionRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 24 },
