@@ -1,134 +1,165 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { getLastAppResult } from "@/services/storage/appStore";
 import { Ionicons } from "@expo/vector-icons";
-// import { getGeminiAnalysis } from "../../utils/geminiApi"; 
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ScanResult() {
   const router = useRouter();
-  const { data } = useLocalSearchParams();
-  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
-  const [loadingAi, setLoadingAi] = useState(true);
-
-  const report = data ? JSON.parse(data as string) : null;
+  const [report, setReport] = useState<any>(null);
 
   useEffect(() => {
-    if (report) {
-      generateAiReport();
+    const data = getLastAppResult();
+    if (data) {
+      setReport(data);
+      // Optional: clear it if you want it to be transient, but user might want to go back and forth
+      // clearLastAppResult(); 
     }
-  }, [report]);
+  }, []);
 
-  const generateAiReport = async () => {
-    try {
-      setLoadingAi(true);
-      // Example prompt for Gemini:
-      const prompt = `Analyze this Android APK report:
-      Package: ${report.package_name}
-      Permissions: ${report.permissions.join(", ")}
-      Found Secrets: ${JSON.stringify(report.secrets)}
-      Provide a security analysis and specific recommendations.`;
+  const analysis = report?.analysis || null;
 
-      // Call your integrated Gemini function here
-      // const response = await getGeminiAnalysis(prompt);
-      // setAiAnalysis(response);
-
-      // MOCK for UI testing:
-      setTimeout(() => {
-        setAiAnalysis("This app requests sensitive permissions like CAMERA and SMS which are often used in surveillance or phishing apps. The presence of hardcoded URLs suggests external data communication.");
-        setLoadingAi(false);
-      }, 1500);
-    } catch (error) {
-      setAiAnalysis("Failed to load AI analysis.");
-      setLoadingAi(false);
-    }
-  };
-
-  if (!report) return <View style={styles.center}><Text>No data</Text></View>;
-
-  const isHighRisk = report.permissions.some((p: string) => 
-    p.includes("SMS") || p.includes("CAMERA") || p.includes("LOCATION")
+  if (!report) return (
+    <SafeAreaView style={[styles.container, styles.center]}>
+      <Text style={styles.errorText}>No scan data provided</Text>
+      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <Text style={styles.backButtonText}>Go Back</Text>
+      </TouchableOpacity>
+    </SafeAreaView>
   );
 
+  const isHighRisk = analysis?.risk === "HIGH";
+  const isMediumRisk = analysis?.risk === "MEDIUM";
+  const isSafe = analysis?.risk === "LOW";
+
+  // Dynamic Theme Colors
+  const themeColor = isHighRisk ? "#EF4444" : isMediumRisk ? "#F59E0B" : "#10B981";
+  const bgTheme = isHighRisk ? "#FEF2F2" : isMediumRisk ? "#FFFBEB" : "#ECFDF5";
+  const iconName = isHighRisk ? "shield-outline" : isMediumRisk ? "alert-circle-outline" : "checkmark-circle-outline";
+
   return (
-    <ScrollView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={24} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Scan Results</Text>
-      </View>
-
-      {/* Risk Banner */}
-      <View style={styles.card}>
-        <Text style={styles.cardLabel}>Analysis Outcome</Text>
-        <Text style={styles.pkgText}>{report.package_name}</Text>
-        <View style={[styles.riskButton, isHighRisk ? styles.bgRed : styles.bgGreen]}>
-          <Ionicons name={isHighRisk ? "shield-alert" : "checkmark-circle"} size={20} color="#FFF" />
-          <Text style={styles.riskButtonText}>{isHighRisk ? "HIGH RISK" : "SAFE"}</Text>
+    <SafeAreaView style={styles.container}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Premium Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+            <Ionicons name="arrow-back" size={24} color="#1E293B" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Security Report</Text>
+          <View style={{ width: 40 }} />
         </View>
-      </View>
 
-      {/* AI Analysis Section */}
-      <View style={styles.card}>
-        <View style={styles.row}>
-          <Ionicons name="sparkles-outline" size={20} color="#2563EB" />
-          <Text style={styles.sectionTitle}>AI Analysis</Text>
+        {/* Hero Score Section */}
+        <View style={styles.heroSection}>
+          <View style={[styles.scoreCircle, { borderColor: themeColor }]}>
+            <Text style={[styles.scoreValue, { color: themeColor }]}>{analysis?.score || 0}%</Text>
+            <Text style={styles.scoreLabel}>Safety Score</Text>
+          </View>
+          <View style={[styles.riskBadge, { backgroundColor: themeColor }]}>
+            <Ionicons name={isHighRisk ? "warning" : "shield-checkmark"} size={16} color="#FFF" />
+            <Text style={styles.riskText}>{analysis?.risk || "UNKNOWN"}</Text>
+          </View>
         </View>
-        {loadingAi ? (
-          <ActivityIndicator color="#2563EB" style={{ marginTop: 10 }} />
-        ) : (
-          <Text style={styles.aiText}>{aiAnalysis}</Text>
-        )}
-      </View>
 
-      {/* Recommendations */}
-      <View style={styles.card}>
-        <View style={styles.row}>
-          <Ionicons name="bulb-outline" size={20} color="#2563EB" />
-          <Text style={styles.sectionTitle}>Recommendations</Text>
+        {/* Security Verdict Card */}
+        <View style={styles.section}>
+          <Text style={styles.sectionHeader}>SECURITY VERDICT</Text>
+          <View style={styles.verdictCard}>
+            <Text style={styles.verdictText}>
+              {analysis?.reason || "Analysis unavailable."}
+            </Text>
+          </View>
         </View>
-        <View style={styles.recList}>
-          {["Do not grant SMS permissions.", "Check for suspicious background activity.", "Verify the developer identity."].map((item, i) => (
-            <View key={i} style={styles.recItem}>
-              <Ionicons name="checkmark" size={16} color="#475569" />
-              <Text style={styles.recText}>{item}</Text>
+
+        {/* App Details Grid */}
+        <View style={styles.section}>
+          <Text style={styles.sectionHeader}>APP DETAILS</Text>
+          <View style={styles.gridContainer}>
+            <View style={styles.gridItem}>
+              <Text style={styles.gridLabel}>App Name</Text>
+              <Text style={styles.gridValue} numberOfLines={1}>{report.appName || "Unknown"}</Text>
             </View>
-          ))}
+            <View style={styles.gridItem}>
+              <Text style={styles.gridLabel}>Permissions</Text>
+              <Text style={styles.gridValue}>{report.permissions?.length || 0}</Text>
+            </View>
+          </View>
+          <View style={styles.pkgContainer}>
+            <Text style={styles.pkgLabel}>Package Name</Text>
+            <Text style={styles.pkgValue}>{report.package_name}</Text>
+          </View>
         </View>
-      </View>
 
-      {/* Actions */}
-      <TouchableOpacity style={styles.btnPrimary}>
-        <Text style={styles.btnPrimaryText}>Secure App</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.btnSecondary} onPress={() => router.back()}>
-        <Text style={styles.btnSecondaryText}>Back</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        {/* Recommendations */}
+        <View style={styles.section}>
+          <Text style={styles.sectionHeader}>RECOMMENDATIONS</Text>
+          {isHighRisk ? (
+            <View style={[styles.recCard, { borderLeftColor: "#EF4444" }]}>
+              <Text style={styles.recTitle}>Immediate Action Required</Text>
+              <Text style={styles.recDesc}>Uninstall this app immediately. It requests dangerous permissions not required for its function.</Text>
+            </View>
+          ) : isMediumRisk ? (
+            <View style={[styles.recCard, { borderLeftColor: "#F59E0B" }]}>
+              <Text style={styles.recTitle}>Review Permissions</Text>
+              <Text style={styles.recDesc}>Check if you really need to grant Camera or Location access to this app.</Text>
+            </View>
+          ) : (
+            <View style={[styles.recCard, { borderLeftColor: "#10B981" }]}>
+              <Text style={styles.recTitle}>Good to Go</Text>
+              <Text style={styles.recDesc}>No significant threats detected. Keep the app updated.</Text>
+            </View>
+          )}
+        </View>
+
+        <View style={{ height: 40 }} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFF", padding: 20 },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  header: { flexDirection: "row", alignItems: "center", marginBottom: 25, marginTop: 20 },
-  headerTitle: { fontSize: 18, fontWeight: "700", marginLeft: "25%" },
-  card: { backgroundColor: "#FFF", borderRadius: 12, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: "#F1F5F9" },
-  cardLabel: { fontSize: 14, fontWeight: "600", color: "#64748B", marginBottom: 4 },
-  pkgText: { fontSize: 13, color: "#94A3B8", marginBottom: 15 },
-  riskButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 12, borderRadius: 10 },
-  bgRed: { backgroundColor: "#EF4444" },
-  bgGreen: { backgroundColor: "#10B981" },
-  riskButtonText: { color: "#FFF", fontWeight: "700", marginLeft: 8 },
-  row: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
-  sectionTitle: { fontSize: 16, fontWeight: "700", marginLeft: 8 },
-  aiText: { fontSize: 14, color: "#475569", lineHeight: 22 },
-  recList: { marginTop: 10 },
-  recItem: { flexDirection: "row", marginBottom: 12, alignItems: "flex-start" },
-  recText: { marginLeft: 10, fontSize: 14, color: "#475569", flex: 1 },
-  btnPrimary: { backgroundColor: "#2563EB", padding: 16, borderRadius: 12, alignItems: "center", marginBottom: 12 },
-  btnPrimaryText: { color: "#FFF", fontWeight: "700" },
-  btnSecondary: { backgroundColor: "#F8FAFF", padding: 16, borderRadius: 12, alignItems: "center", borderWidth: 1, borderColor: "#E2E8F0" },
-  btnSecondaryText: { color: "#64748B", fontWeight: "600" },
+  container: { flex: 1, backgroundColor: "#F8FAFC", paddingHorizontal: 20 },
+  center: { justifyContent: "center", alignItems: "center" },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 30 },
+  headerTitle: { fontSize: 18, fontWeight: "700", color: "#0F172A", letterSpacing: 0.5 },
+  iconBtn: { padding: 8, backgroundColor: "#FFF", borderRadius: 12, borderWidth: 1, borderColor: "#E2E8F0" },
+
+  heroSection: { alignItems: "center", marginBottom: 32 },
+  scoreCircle: {
+    width: 140, height: 140, borderRadius: 70, borderWidth: 8,
+    justifyContent: "center", alignItems: "center", backgroundColor: "#FFF",
+    shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 10, elevation: 4
+  },
+  scoreValue: { fontSize: 48, fontWeight: "800", letterSpacing: -1 },
+  scoreLabel: { fontSize: 12, color: "#64748B", textTransform: "uppercase", fontWeight: "600", marginTop: -4 },
+
+  riskBadge: {
+    flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 8,
+    borderRadius: 20, marginTop: -20, borderWidth: 4, borderColor: "#F8FAFC"
+  },
+  riskText: { color: "#FFF", fontWeight: "700", marginLeft: 6, fontSize: 14 },
+
+  section: { marginBottom: 24 },
+  sectionHeader: { fontSize: 12, fontWeight: "700", color: "#94A3B8", marginBottom: 12, letterSpacing: 1 },
+
+  verdictCard: { backgroundColor: "#FFF", padding: 20, borderRadius: 16, borderWidth: 1, borderColor: "#E2E8F0" },
+  verdictText: { fontSize: 15, color: "#334155", lineHeight: 24, fontWeight: "500" },
+
+  gridContainer: { flexDirection: "row", gap: 12, marginBottom: 12 },
+  gridItem: { flex: 1, backgroundColor: "#FFF", padding: 16, borderRadius: 16, borderWidth: 1, borderColor: "#E2E8F0" },
+  gridLabel: { fontSize: 12, color: "#64748B", marginBottom: 4 },
+  gridValue: { fontSize: 16, fontWeight: "700", color: "#0F172A" },
+
+  pkgContainer: { backgroundColor: "#FFF", padding: 16, borderRadius: 16, borderWidth: 1, borderColor: "#E2E8F0" },
+  pkgLabel: { fontSize: 12, color: "#64748B", marginBottom: 4 },
+  pkgValue: { fontSize: 13, color: "#334155", fontFamily: "monospace" },
+
+  recCard: { backgroundColor: "#FFF", padding: 16, borderRadius: 12, borderLeftWidth: 4, shadowColor: "#000", shadowOpacity: 0.03, elevation: 2 },
+  recTitle: { fontSize: 15, fontWeight: "700", color: "#0F172A", marginBottom: 4 },
+  recDesc: { fontSize: 13, color: "#475569", lineHeight: 20 },
+
+  errorText: { marginBottom: 16, color: "#64748B" },
+  backButton: { padding: 12, backgroundColor: "#e2e8f0", borderRadius: 8 },
+  backButtonText: { fontWeight: "600" }
 });

@@ -12,8 +12,9 @@ import {
   Text,
   TouchableOpacity,
   useWindowDimensions,
-  View,
+  View
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 // Simple helper for time ago
 const formatTimeAgo = (date: any) => {
@@ -116,7 +117,7 @@ export default function Index() {
   };
 
   return (
-    <View style={styles.safe}>
+    <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.headerRow}>
           <View style={styles.appBadge}>
@@ -278,7 +279,7 @@ export default function Index() {
           )}
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 

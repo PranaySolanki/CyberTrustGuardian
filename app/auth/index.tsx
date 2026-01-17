@@ -5,104 +5,108 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function AuthIndex() {
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      {/* Logo Section */}
-      <View style={styles.heroSection}>
-        <Text style={styles.heroBadge}>🛡️</Text>
-        <Text style={styles.heroTitle}>CyberTrust Guardian</Text>
-        <Text style={styles.heroSubtitle}>Protect Yourself from Digital Threats</Text>
-      </View>
-
-      {/* Features Section */}
-      <View style={styles.featuresSection}>
-        <Text style={styles.sectionTitle}>Why CyberGuardian?</Text>
-
-        <View style={styles.featureCard}>
-          <Text style={styles.featureIcon}>✉️</Text>
-          <Text style={styles.featureTitle}>Phishing Detection</Text>
-          <Text style={styles.featureDescription}>
-            AI-powered analysis to detect phishing emails, SMS, and links in real-time
-          </Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFF' }}>
+      <ScrollView contentContainerStyle={styles.container}>
+        {/* Logo Section */}
+        <View style={styles.heroSection}>
+          <Text style={styles.heroBadge}>🛡️</Text>
+          <Text style={styles.heroTitle}>CyberTrust Guardian</Text>
+          <Text style={styles.heroSubtitle}>Protect Yourself from Digital Threats</Text>
         </View>
 
-        <View style={styles.featureCard}>
-          <Text style={styles.featureIcon}>📸</Text>
-          <Text style={styles.featureTitle}>QR Code Safety</Text>
-          <Text style={styles.featureDescription}>
-            Scan QR codes safely and verify URLs before visiting them
-          </Text>
+        {/* Features Section */}
+        <View style={styles.featuresSection}>
+          <Text style={styles.sectionTitle}>Why CyberGuardian?</Text>
+
+          <View style={styles.featureCard}>
+            <Text style={styles.featureIcon}>✉️</Text>
+            <Text style={styles.featureTitle}>Phishing Detection</Text>
+            <Text style={styles.featureDescription}>
+              AI-powered analysis to detect phishing emails, SMS, and links in real-time
+            </Text>
+          </View>
+
+          <View style={styles.featureCard}>
+            <Text style={styles.featureIcon}>📸</Text>
+            <Text style={styles.featureTitle}>QR Code Safety</Text>
+            <Text style={styles.featureDescription}>
+              Scan QR codes safely and verify URLs before visiting them
+            </Text>
+          </View>
+
+          <View style={styles.featureCard}>
+            <Text style={styles.featureIcon}>🔒</Text>
+            <Text style={styles.featureTitle}>App Permissions</Text>
+            <Text style={styles.featureDescription}>
+              Analyze installed apps for excessive permissions and security risks
+            </Text>
+          </View>
+
+          <View style={styles.featureCard}>
+            <Text style={styles.featureIcon}>🔐</Text>
+            <Text style={styles.featureTitle}>Breach Checker</Text>
+            <Text style={styles.featureDescription}>
+              Check if your email or password has appeared in known data breaches
+            </Text>
+          </View>
         </View>
 
-        <View style={styles.featureCard}>
-          <Text style={styles.featureIcon}>🔒</Text>
-          <Text style={styles.featureTitle}>App Permissions</Text>
-          <Text style={styles.featureDescription}>
-            Analyze installed apps for excessive permissions and security risks
-          </Text>
+        {/* Stats Section */}
+        <View style={styles.statsSection}>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>1M+</Text>
+            <Text style={styles.statLabel}>Threats Detected</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>500K+</Text>
+            <Text style={styles.statLabel}>Users Protected</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>24/7</Text>
+            <Text style={styles.statLabel}>Active Monitoring</Text>
+          </View>
         </View>
 
-        <View style={styles.featureCard}>
-          <Text style={styles.featureIcon}>🔐</Text>
-          <Text style={styles.featureTitle}>Breach Checker</Text>
-          <Text style={styles.featureDescription}>
-            Check if your email or password has appeared in known data breaches
-          </Text>
-        </View>
-      </View>
+        {/* CTA Section */}
+        <View style={styles.ctaSection}>
+          <Link href="/auth/sign-up" asChild>
+            <TouchableOpacity style={styles.signUpButton}>
+              <Text style={styles.signUpButtonText}>Create Account</Text>
+            </TouchableOpacity>
+          </Link>
 
-      {/* Stats Section */}
-      <View style={styles.statsSection}>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>1M+</Text>
-          <Text style={styles.statLabel}>Threats Detected</Text>
+          <Link href="/auth/sign-in" asChild>
+            <TouchableOpacity style={styles.signInButton}>
+              <Text style={styles.signInButtonText}>Sign In</Text>
+            </TouchableOpacity>
+          </Link>
         </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>500K+</Text>
-          <Text style={styles.statLabel}>Users Protected</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>24/7</Text>
-          <Text style={styles.statLabel}>Active Monitoring</Text>
-        </View>
-      </View>
 
-      {/* CTA Section */}
-      <View style={styles.ctaSection}>
-        <Link href="/auth/sign-up" asChild>
-          <TouchableOpacity style={styles.signUpButton}>
-            <Text style={styles.signUpButtonText}>Create Account</Text>
-          </TouchableOpacity>
-        </Link>
-
-        <Link href="/auth/sign-in" asChild>
-          <TouchableOpacity style={styles.signInButton}>
-            <Text style={styles.signInButtonText}>Sign In</Text>
-          </TouchableOpacity>
-        </Link>
-      </View>
-
-      {/* Trust Section */}
-      <View style={styles.trustSection}>
-        <Text style={styles.trustTitle}>We Take Your Security Seriously</Text>
-        <View style={styles.trustFeature}>
-          <Text style={styles.trustIcon}>✓</Text>
-          <Text style={styles.trustText}>Military-grade encryption for all data</Text>
+        {/* Trust Section */}
+        <View style={styles.trustSection}>
+          <Text style={styles.trustTitle}>We Take Your Security Seriously</Text>
+          <View style={styles.trustFeature}>
+            <Text style={styles.trustIcon}>✓</Text>
+            <Text style={styles.trustText}>Military-grade encryption for all data</Text>
+          </View>
+          <View style={styles.trustFeature}>
+            <Text style={styles.trustIcon}>✓</Text>
+            <Text style={styles.trustText}>No ads or data selling</Text>
+          </View>
+          <View style={styles.trustFeature}>
+            <Text style={styles.trustIcon}>✓</Text>
+            <Text style={styles.trustText}>Regular security audits</Text>
+          </View>
         </View>
-        <View style={styles.trustFeature}>
-          <Text style={styles.trustIcon}>✓</Text>
-          <Text style={styles.trustText}>No ads or data selling</Text>
-        </View>
-        <View style={styles.trustFeature}>
-          <Text style={styles.trustIcon}>✓</Text>
-          <Text style={styles.trustText}>Regular security audits</Text>
-        </View>
-      </View>
-    </ScrollView >
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 

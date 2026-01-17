@@ -4,6 +4,7 @@ import { safeBrowsingCheck } from '@/services/calls/safeBrowsing'
 import { db } from '@/services/firebase/firebase'
 import { setLastPhishingResult } from '@/services/storage/phishingStore'
 import { recordScan } from '@/services/storage/scanHistory'
+import { Ionicons } from '@expo/vector-icons'
 import { validateAndNormalizeUrl } from '@/services/utils/urlValidator'
 import { router } from 'expo-router'
 import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore'
@@ -19,6 +20,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 const { width } = Dimensions.get('window')
 
@@ -57,11 +59,14 @@ function PhishingScanHeader({ activeTab, setActiveTab, text, setText, loading, o
 
   return (
     <View style={styles.content}>
-      <View style={styles.headerRow}>
+      {/* Standard Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+          <Ionicons name="arrow-back" size={24} color="#1E293B" />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Phishing Detector</Text>
-        <Text style={styles.headerAction}>⟳</Text>
+        <View style={{ width: 40 }} />
       </View>
-      <Text style={styles.headerSubtitle}>AI-powered threat analysis</Text>
 
       <View style={styles.card}>
         <View style={styles.tabRow}>
@@ -277,7 +282,7 @@ export default function Phishing() {
 
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <FlatList
         data={scans}
         keyExtractor={i => i.id}
@@ -297,16 +302,15 @@ export default function Phishing() {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F6F8FB' },
-  headerRow: { paddingHorizontal: 16, marginTop: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#0F172A' },
-  headerAction: { fontSize: 18, color: '#6B7280' },
-  headerSubtitle: { paddingHorizontal: 16, color: '#6B7280', marginTop: 4, marginBottom: 12 },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, marginBottom: 20 },
+  headerTitle: { fontSize: 18, fontWeight: "700", color: "#0F172A", letterSpacing: 0.5 },
+  iconBtn: { padding: 8, backgroundColor: "#FFF", borderRadius: 12, borderWidth: 1, borderColor: "#E2E8F0" },
 
   content: { padding: 16 },
   card: {
