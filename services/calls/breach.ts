@@ -1,4 +1,6 @@
 import * as Crypto from 'expo-crypto';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase/firebase';
 
 type EmailResult = {
   found: boolean
@@ -26,33 +28,27 @@ export function breachCheck(content: string, type: 'Email'): Promise<EmailResult
 export function breachCheck(content: string, type: 'PASSWORD'): Promise<PasswordResult>
 export async function breachCheck(content: string, type: 'Email' | 'PASSWORD'): Promise<EmailResult | PasswordResult> {
   if (type === 'Email') {
-    const email = content.trim()
-    const url = `https://haveibeenpwned.com/api/v3/breachedaccount/${encodeURIComponent(email)}`
-
-    const headers: Record<string, string> = {
-      'user-agent': HIBP_USER_AGENT,
-      Accept: 'application/vnd.haveibeenpwned.v3+json',
-      'hibp-api-key': HIBP_TEST_KEY,
-    }
-
+    const email = content.trim().toLowerCase()
     try {
-      const resp = await fetch(url, { method: 'GET', headers })
-      if (resp.status === 404) {
-        // No breaches found
-        const result: EmailResult = { found: false, breaches: [] }
-        return result
-      }
-      if (!resp.ok) {
-        const text = await resp.text()
-        throw new Error(`HIBP email lookup failed: ${resp.status} ${text}`)
-      }
+      const docRef = doc(db, 'breaches', email);
+      const docSnap = await getDoc(docRef);
 
-      const json = await resp.json()
-      const breaches = (json || []).map((b: any) => ({ Name: b.Name, Domain: b.Domain, BreachDate: b.BreachDate }))
-      const result: EmailResult = { found: breaches.length > 0, breaches }
-      return result
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        return {
+          found: true,
+          breaches: data.breaches || []
+        };
+      } else {
+        return {
+          found: false,
+          breaches: []
+        };
+      }
     } catch (error) {
-      throw error
+      console.error('Firestore breach lookup failed:', error);
+      // Fallback to empty if Firestore fails or just throw
+      throw error;
     }
   }
 
