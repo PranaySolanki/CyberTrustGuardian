@@ -220,6 +220,19 @@ export default function Index() {
             </View>
           </Link>
 
+          <Link href="/pages/device_health/device_health" style={{ textDecorationLine: "none" }}>
+            <View style={styles.toolItem}>
+              <View style={[styles.toolIcon, { backgroundColor: "#FFB020" }]}>
+                <Text style={styles.toolIconEmoji}>📱</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.toolTitle}>Device Integrity Check</Text>
+                <Text style={styles.toolSub}>Root & emulator detection</Text>
+              </View>
+              <Text style={styles.chev}>›</Text>
+            </View>
+          </Link>
+
           <Link href="/pages/breach_check/breach" style={{ textDecorationLine: "none" }}>
             <View style={[styles.toolItem, { width: toolItemWidth, marginBottom: toolItemMarginBottom }]}>
               <View style={[styles.toolIcon, { backgroundColor: "#ffd166" }]}>
