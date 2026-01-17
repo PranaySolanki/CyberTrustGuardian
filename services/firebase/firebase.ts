@@ -1,6 +1,7 @@
 // @ts-ignore
 import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 import { getApp, getApps, initializeApp } from 'firebase/app';
+// @ts-ignore -- getReactNativePersistence is missing from types in v12+
 import { getReactNativePersistence, initializeAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 

@@ -14,6 +14,9 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -447,109 +450,121 @@ export default function QRScanner() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        {/* Standard Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
-            <Ionicons name="arrow-back" size={24} color="#1E293B" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>QR Scanner</Text>
-          <View style={{ width: 40 }} />
-        </View>
-
-        <View style={styles.cameraSection}>
-          <View style={[styles.corner, styles.cornerTL]} />
-          <View style={[styles.corner, styles.cornerTR]} />
-          <View style={[styles.corner, styles.cornerBL]} />
-          <View style={[styles.corner, styles.cornerBR]} />
-
-          {selectedImage ? (
-            <>
-              <Image
-                source={{ uri: selectedImage }}
-                style={styles.selectedImage}
-              />
-              <TouchableOpacity
-                style={styles.clearImageButton}
-                onPress={() => {
-                  setSelectedImage(null);
-                  setManualUrl('');
-                }}
-              >
-                <Ionicons name="close" size={20} color="#fff" />
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <Ionicons name="camera-outline" size={48} color="#999" />
-              <Text style={styles.cameraPrompt}>Point camera at a QR code</Text>
-            </>
-          )}
-
-          <View style={styles.buttonGroup}>
-            <TouchableOpacity
-              style={[styles.activateCameraButton, (loading || isAnalyzing.current) && styles.buttonDisabled]}
-              onPress={() => setCameraActive(true)}
-              disabled={loading || isAnalyzing.current}
-            >
-              <Ionicons name="camera" size={20} color="#fff" style={styles.buttonIcon} />
-              <Text style={styles.activateCameraButtonText}>Camera</Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          contentContainerStyle={[
+            styles.content,
+            { flexGrow: 1, justifyContent: 'space-between' } // Ensure space-between works with ScrollView
+          ]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Standard Header */}
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+              <Ionicons name="arrow-back" size={24} color="#1E293B" />
             </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.galleryButton, (loading || isAnalyzing.current) && styles.buttonDisabled]}
-              onPress={pickImageFromGallery}
-              disabled={loading || isAnalyzing.current}
-            >
-              <Ionicons name="image" size={20} color="#fff" style={styles.buttonIcon} />
-              <Text style={styles.galleryButtonText}>Gallery</Text>
-            </TouchableOpacity>
+            <Text style={styles.headerTitle}>QR Scanner</Text>
+            <View style={{ width: 40 }} />
           </View>
 
-          <Text style={styles.orText}>OR ENTER MANUALLY</Text>
-        </View>
+          <View style={styles.cameraSection}>
+            <View style={[styles.corner, styles.cornerTL]} />
+            <View style={[styles.corner, styles.cornerTR]} />
+            <View style={[styles.corner, styles.cornerBL]} />
+            <View style={[styles.corner, styles.cornerBR]} />
 
-        <View style={styles.urlInputSection}>
-          <View style={styles.urlInputWrapper}>
-            <TextInput
-              style={styles.urlInput}
-              placeholder="https://example.com"
-              placeholderTextColor="#666"
-              value={manualUrl}
-              onChangeText={setManualUrl}
-              editable={true}
-            />
+            {selectedImage ? (
+              <>
+                <Image
+                  source={{ uri: selectedImage }}
+                  style={styles.selectedImage}
+                />
+                <TouchableOpacity
+                  style={styles.clearImageButton}
+                  onPress={() => {
+                    setSelectedImage(null);
+                    setManualUrl('');
+                  }}
+                >
+                  <Ionicons name="close" size={20} color="#fff" />
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Ionicons name="camera-outline" size={48} color="#999" />
+                <Text style={styles.cameraPrompt}>Point camera at a QR code</Text>
+              </>
+            )}
+
+            <View style={styles.buttonGroup}>
+              <TouchableOpacity
+                style={[styles.activateCameraButton, (loading || isAnalyzing.current) && styles.buttonDisabled]}
+                onPress={() => setCameraActive(true)}
+                disabled={loading || isAnalyzing.current}
+              >
+                <Ionicons name="camera" size={20} color="#fff" style={styles.buttonIcon} />
+                <Text style={styles.activateCameraButtonText}>Camera</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.galleryButton, (loading || isAnalyzing.current) && styles.buttonDisabled]}
+                onPress={pickImageFromGallery}
+                disabled={loading || isAnalyzing.current}
+              >
+                <Ionicons name="image" size={20} color="#fff" style={styles.buttonIcon} />
+                <Text style={styles.galleryButtonText}>Gallery</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.orText}>OR ENTER MANUALLY</Text>
+          </View>
+
+          <View style={styles.urlInputSection}>
+            <View style={styles.urlInputWrapper}>
+              <TextInput
+                style={styles.urlInput}
+                placeholder="https://example.com"
+                placeholderTextColor="#666"
+                value={manualUrl}
+                onChangeText={setManualUrl}
+                editable={true}
+              />
+              {manualUrl && (
+                <TouchableOpacity
+                  style={styles.copyButton}
+                  onPress={handleCopyToClipboard}
+                >
+                  <Ionicons name="copy" size={20} color="#2563EB" />
+                </TouchableOpacity>
+              )}
+            </View>
             {manualUrl && (
               <TouchableOpacity
-                style={styles.copyButton}
-                onPress={handleCopyToClipboard}
+                style={[styles.analyzeButton, loading && styles.analyzeButtonDisabled]}
+                onPress={() => safeBrowsingApi(manualUrl)}
+                disabled={loading || isAnalyzing.current}
               >
-                <Ionicons name="copy" size={20} color="#2563EB" />
+                {loading ? (
+                  <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />
+                ) : null}
+                <Text style={styles.analyzeButtonText}>
+                  {loading ? 'Analyzing...' : 'Analyze URL'}
+                </Text>
               </TouchableOpacity>
             )}
           </View>
-          {manualUrl && (
-            <TouchableOpacity
-              style={[styles.analyzeButton, loading && styles.analyzeButtonDisabled]}
-              onPress={() => safeBrowsingApi(manualUrl)}
-              disabled={loading || isAnalyzing.current}
-            >
-              {loading ? (
-                <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />
-              ) : null}
-              <Text style={styles.analyzeButtonText}>
-                {loading ? 'Analyzing...' : 'Analyze URL'}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            We analyze the destination URL for phishing and malware before you visit.
-          </Text>
-        </View>
-      </View>
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>
+              We analyze the destination URL for phishing and malware before you visit.
+            </Text>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

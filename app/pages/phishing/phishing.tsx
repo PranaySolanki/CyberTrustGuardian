@@ -82,6 +82,7 @@ function PhishingScanHeader({ activeTab, setActiveTab, text, setText, loading, o
           onChangeText={setText}
           numberOfLines={5}
           textAlignVertical="top"
+          placeholderTextColor={'#53647bff'}
         />
 
         <TouchableOpacity style={styles.analyzeBtn} disabled={loading} onPress={onAnalyze}>
@@ -345,6 +346,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: '#E6EEF8',
+    color: '#000000',
     marginBottom: 12,
   },
   analyzeBtn: {
