@@ -66,14 +66,14 @@ export default function Index() {
   if (isInitializing) return null;
 
   if (!isSignedIn) {
-    return <Redirect href="/auth" />;
+    return <Redirect href={"/auth" as any} />;
   }
 
   const handleSignOut = () => {
     if (Platform.OS === 'web') {
       if (window.confirm("Are you sure you want to sign out?")) {
         signOut().then(() => {
-          router.replace("/auth");
+          router.replace("/auth" as any);
         });
       }
     } else {
@@ -84,7 +84,7 @@ export default function Index() {
           style: "destructive",
           onPress: async () => {
             await signOut();
-            router.replace("/auth");
+            router.replace("/auth" as any);
           },
         },
       ]);

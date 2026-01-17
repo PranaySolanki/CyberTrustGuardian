@@ -1,5 +1,4 @@
 import { useAuth } from "@/services/auth/authContext";
-import { recordScan } from "@/services/scanHistory";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { useRouter } from "expo-router";
@@ -7,7 +6,6 @@ import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   ScrollView,
   StyleSheet,
   Text,
@@ -34,7 +32,7 @@ const mockApps: AppItem[] = [
 
 export default function AppDetection() {
   // ✅ STATE MUST BE HERE (before return)
-  const [selectedApk, setSelectedApk] = useState<string | null>(null);
+
   const { user } = useAuth();
   const [selectedApk, setSelectedApk] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [isScanning, setIsScanning] = useState(false);
@@ -183,8 +181,8 @@ export default function AppDetection() {
 
           {/* Nested ScrollView for permissions */}
           <View style={styles.scrollArea}>
-            <ScrollView 
-              nestedScrollEnabled={true} 
+            <ScrollView
+              nestedScrollEnabled={true}
               contentContainerStyle={styles.permissionList}
               showsVerticalScrollIndicator={true}
             >
@@ -210,11 +208,11 @@ export default function AppDetection() {
       <View style={{ marginTop: 10 }}>
         {mockApps.map((item) => (
           <View key={item.id}>
-             {renderItem({ item })}
+            {renderItem({ item })}
           </View>
         ))}
       </View>
-      
+
       {/* Spacer for bottom padding */}
       <View style={{ height: 40 }} />
     </ScrollView>
