@@ -1,3 +1,5 @@
+import { useAuth } from "@/services/auth/authContext";
+import { recordScan } from "@/services/scanHistory";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { useRouter } from "expo-router";
@@ -31,6 +33,9 @@ const mockApps: AppItem[] = [
 ];
 
 export default function AppDetection() {
+  // ✅ STATE MUST BE HERE (before return)
+  const [selectedApk, setSelectedApk] = useState<string | null>(null);
+  const { user } = useAuth();
   const [selectedApk, setSelectedApk] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const router = useRouter();

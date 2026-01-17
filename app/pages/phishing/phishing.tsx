@@ -1,4 +1,6 @@
+import { useAuth } from '@/services/auth/authContext'
 import { analyzePhisingAttempt } from '@/services/calls/gemini'
+import { recordScan } from '@/services/scanHistory'
 import { setLastPhishingResult } from '@/services/storage/phishingStore'
 import { router } from 'expo-router'
 import React, { useState } from 'react'
@@ -31,14 +33,14 @@ const initialScans: Scan[] = [
     title: 'Your account has been suspended. Click here to verify...',
     time: '16:32',
     risk: 'HIGH',
-    score: 92,
+    score: 10,
   },
   {
     id: '2',
     title: 'Win a free gift card now — confirm details',
     time: '15:05',
     risk: 'MEDIUM',
-    score: 58,
+    score: 45,
   },
 ]
 
@@ -111,31 +113,44 @@ function PhishingScanHeader({ activeTab, setActiveTab, text, setText, loading, o
 }
 
 export default function Phishing() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('Email')
   const [text, setText] = useState('')
   const [scans, setScans] = useState<Scan[]>(initialScans)
   const [loading, setLoading] = useState(false);
 
-  const analyze = async() => {
-    if (!text.trim()){
+  const analyze = async () => {
+    if (!text.trim()) {
       const emptyInputAlert = 'Please enter some content to analyze.'
       alert(emptyInputAlert)
-      return 
+      return
     }
     setLoading(true);
-  try {
-    const analysis = await analyzePhisingAttempt(text, activeTab.toUpperCase() as any);
-    setLoading(false);
-    setText('');
-    // Store result in memory (avoid sending potentially sensitive data as URL params)
-    setLastPhishingResult({ risk: analysis.risk, score: analysis.score, reason: analysis.reason, content: text.slice(0, 200) + '...' })
-    router.push({ pathname: '/pages/phishing/scan_result' })
-  } catch (error) {
-    
-    setLoading(false);
-    const errorMessage = error;
-    alert(errorMessage);
-  } 
+    try {
+      const analysis = await analyzePhisingAttempt(text, activeTab.toUpperCase() as any);
+      setLoading(false);
+      setText('');
+      // Store result in memory (avoid sending potentially sensitive data as URL params)
+      setLastPhishingResult({ risk: analysis.risk, score: analysis.score, reason: analysis.reason, content: text.slice(0, 200) + '...' })
+
+      // Record scan
+      if (user) {
+        const status = analysis.risk === 'HIGH' ? 'Dangerous' : analysis.risk === 'MEDIUM' ? 'Suspicious' : 'Safe';
+        recordScan(user.id, activeTab === 'URL' ? 'URL' : activeTab === 'SMS' ? 'SMS' : 'Email', status, text.slice(0, 30), {
+          risk: analysis.risk,
+          score: analysis.score,
+          reason: analysis.reason,
+          content: text.slice(0, 200) + '...'
+        });
+      }
+
+      router.push({ pathname: '/pages/phishing/scan_result' })
+    } catch (error) {
+
+      setLoading(false);
+      const errorMessage = error;
+      alert(errorMessage);
+    }
   }
 
   const renderTab = (tab: Tab) => (
@@ -166,21 +181,21 @@ export default function Phishing() {
     )
   }
 
-  
+
 
   return (
     <View style={styles.container}>
-          <FlatList
-            data={scans}
-            keyExtractor={i => i.id}
-            renderItem={ScanHistory}
-            ListHeaderComponent={<PhishingScanHeader activeTab={activeTab} setActiveTab={setActiveTab} text={text} setText={setText} loading={loading} onAnalyze={analyze} scansLength={scans.length} />}
-            keyboardShouldPersistTaps="handled"
-            ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-            contentContainerStyle={{ paddingBottom: 40 }}
-          />
+      <FlatList
+        data={scans}
+        keyExtractor={i => i.id}
+        renderItem={ScanHistory}
+        ListHeaderComponent={<PhishingScanHeader activeTab={activeTab} setActiveTab={setActiveTab} text={text} setText={setText} loading={loading} onAnalyze={analyze} scansLength={scans.length} />}
+        keyboardShouldPersistTaps="handled"
+        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+        contentContainerStyle={{ paddingBottom: 40 }}
+      />
 
-        {/* --- LOADING OVERLAY --- */}
+      {/* --- LOADING OVERLAY --- */}
       <Modal transparent visible={loading} animationType="fade">
         <View style={styles.overlay}>
           <View style={styles.loaderContainer}>

@@ -1,20 +1,28 @@
 import { clearLastPhishingResult, getLastPhishingResult } from '@/services/storage/phishingStore';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function PhishingScanResult() {
+  const params = useLocalSearchParams()
   const [data, setData] = useState<{ risk?: string; score?: number; reason?: string; content?: string } | null>(null)
 
   useEffect(() => {
-    const last = getLastPhishingResult()
-    if (last) {
-      setData(last)
-      clearLastPhishingResult()
-    } else {
-      setData(null)
+    if (params.content) {
+      setData({
+        risk: params.risk as string,
+        score: parseInt(params.score as string) || 0,
+        reason: params.reason as string,
+        content: params.content as string,
+      })
+    } else if (!data) {
+      const last = getLastPhishingResult()
+      if (last) {
+        setData(last)
+        clearLastPhishingResult()
+      }
     }
-  }, [])
+  }, [params.content, params.id])
 
   if (!data) {
     return (
@@ -32,7 +40,7 @@ export default function PhishingScanResult() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.header}>Scan Analysis Result</Text>
-      
+
       <View style={styles.resultBox}>
         <Text style={styles.label}>Risk Level:</Text>
         <Text style={[styles.value, { color: risk === 'HIGH' ? 'red' : 'green' }]}>

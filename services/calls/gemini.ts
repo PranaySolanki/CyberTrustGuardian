@@ -4,14 +4,14 @@ import { GoogleGenerativeAI, Schema, SchemaType } from "@google/generative-ai";
 const raw_api_key = (process.env.EXPO_PUBLIC_GEMINI_API_KEY)?.toString();
 
 if (!raw_api_key) {
-  throw new Error("EXPO_PUBLIC_GEMINI_API_KEY environment variable is not set");
+    throw new Error("EXPO_PUBLIC_GEMINI_API_KEY environment variable is not set");
 }
 
 function rot13(str: string) {
-  return str.replace(/[A-Za-z]/g, (c) => {
-    const base = c <= "Z" ? 65 : 97;
-    return String.fromCharCode(((c.charCodeAt(0) - base + 13) % 26) + base);
-  });
+    return str.replace(/[A-Za-z]/g, (c) => {
+        const base = c <= "Z" ? 65 : 97;
+        return String.fromCharCode(((c.charCodeAt(0) - base + 13) % 26) + base);
+    });
 }
 
 // Decode the ROT13-encoded value stored in the env var
@@ -21,35 +21,40 @@ const api_key = rot13(raw_api_key);
 const genAI = new GoogleGenerativeAI(api_key);
 
 const schema: Schema = {
-  type: SchemaType.OBJECT,
-  description: "Security analysis result",
-  properties: {
-    risk: {
-      type: SchemaType.STRING,
-      description: "Risk level: LOW, MEDIUM, or HIGH",
-      nullable: false,
+    type: SchemaType.OBJECT,
+    description: "Security analysis result",
+    properties: {
+        risk: {
+            type: SchemaType.STRING,
+            description: "Risk level: LOW, MEDIUM, or HIGH",
+            nullable: false,
+        },
+        score: {
+            type: SchemaType.NUMBER,
+            description: "Safety score from 0-100",
+            nullable: false,
+        },
+        reason: {
+            type: SchemaType.STRING,
+            description: "Brief explanation of why this risk level was assigned",
+            nullable: false,
+        },
     },
-    score: {
-      type: SchemaType.NUMBER,
-      description: "Safety score from 0-100",
-      nullable: false,
-    },
-    reason: {
-      type: SchemaType.STRING,
-      description: "Brief explanation of why this risk level was assigned",
-      nullable: false,
-    },
-  },
-  required: ["risk", "score", "reason"],
+    required: ["risk", "score", "reason"],
 };
 
 // Now pass it to the model
 const model = genAI.getGenerativeModel({
-  model: "gemini-2.5-flash-lite",
-  generationConfig: {
-    responseMimeType: "application/json",
-    responseSchema: schema, 
-  },
+    model: "gemini-2.5-flash-lite",
+    generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: schema,
+    },
+});
+
+// Vision model for image analysis (no schema needed for QR extraction)
+const visionModel = genAI.getGenerativeModel({
+    model: "gemini-2.5-flash-lite",
 });
 
 
@@ -78,7 +83,7 @@ export const analyzePhisingAttempt = async (content: string, type: 'EMAIL' | 'SM
         OUTPUT FORMAT:
         You must return JSON with:
         - risk: "LOW", "MEDIUM", or "HIGH"
-        - score: (0-100, where 100 is most dangerous)
+        - score: (0-100, where 100 is safest)
         - reason: A technical explanation of the specific red flags found.
         
         Content to analyze: "${content}"
@@ -86,7 +91,18 @@ export const analyzePhisingAttempt = async (content: string, type: 'EMAIL' | 'SM
 
     try {
         const result = await model.generateContent(prompt);
-        return JSON.parse(result.response.text());
+        const responseText = result.response.text();
+
+        if (!responseText) {
+            throw new Error("Empty response from Gemini API");
+        }
+
+        try {
+            return JSON.parse(responseText);
+        } catch (parseError) {
+            console.error("Failed to parse Gemini response:", responseText);
+            throw new Error("Invalid JSON response from Gemini API");
+        }
     } catch (error) {
         console.error("Gemini Analysis Error:", error);
         throw error;
@@ -109,7 +125,7 @@ export const analyzeQrCode = async (content: string) => {
         OUTPUT FORMAT (JSON ONLY):
         {
         "risk": "LOW" | "MEDIUM" | "HIGH",
-        "score": 0-100,
+        "score": 0-100 (where 100 is safest),
         "reason": "Detailed explanation of red flags (e.g., 'Hidden redirect detected' or 'Impersonation of [Brand]')"
         }
 
@@ -118,9 +134,143 @@ export const analyzeQrCode = async (content: string) => {
 
     try {
         const result = await model.generateContent(prompt);
-        return JSON.parse(result.response.text());
+        const responseText = result.response.text();
+
+        if (!responseText) {
+            throw new Error("Empty response from Gemini API");
+        }
+
+        try {
+            return JSON.parse(responseText);
+        } catch (parseError) {
+            console.error("Failed to parse Gemini response:", responseText);
+            throw new Error("Invalid JSON response from Gemini API");
+        }
     } catch (error) {
         console.error("Gemini Analysis Error:", error);
+        throw error;
+    }
+};
+
+/**
+ * Extract QR code data from an image using Gemini Vision API
+ * @param imageUri - Local file URI or base64 image data
+ * @returns The QR code content as a string, or null if no QR code found
+ */
+export const extractQrCodeFromImage = async (imageUri: string): Promise<string | null> => {
+    try {
+        // Convert image URI to base64
+        let imageBase64: string;
+        let mimeType: string = 'image/jpeg';
+
+        // Check if it's already base64
+        if (imageUri.startsWith('data:image/')) {
+            const parts = imageUri.split(',');
+            mimeType = parts[0].split(';')[0].split(':')[1];
+            imageBase64 = parts[1];
+        } else {
+            // For React Native/Expo, determine MIME type from URI extension
+            if (imageUri.toLowerCase().endsWith('.png')) {
+                mimeType = 'image/png';
+            } else if (imageUri.toLowerCase().endsWith('.gif')) {
+                mimeType = 'image/gif';
+            } else if (imageUri.toLowerCase().endsWith('.webp')) {
+                mimeType = 'image/webp';
+            }
+
+            // Fetch the image and convert to base64
+            // Handle both file:// URIs (local) and http(s):// URIs (remote)
+            const response = await fetch(imageUri);
+            const blob = await response.blob();
+
+            // Convert blob to base64 using a cross-platform compatible method
+            imageBase64 = await new Promise<string>((resolve, reject) => {
+                // Try using FileReader if available (web), otherwise use ArrayBuffer method
+                if (typeof FileReader !== 'undefined') {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const base64String = (reader.result as string).split(',')[1];
+                        resolve(base64String);
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                } else {
+                    // For React Native, convert blob to array buffer then to base64
+                    blob.arrayBuffer().then(buffer => {
+                        // Convert ArrayBuffer to base64
+                        const bytes = new Uint8Array(buffer);
+                        let binary = '';
+                        for (let i = 0; i < bytes.length; i++) {
+                            binary += String.fromCharCode(bytes[i]);
+                        }
+                        // Use btoa if available, otherwise need polyfill
+                        if (typeof btoa !== 'undefined') {
+                            resolve(btoa(binary));
+                        } else {
+                            // Fallback: use Buffer if available (Node.js environment)
+                            if (typeof Buffer !== 'undefined') {
+                                resolve(Buffer.from(binary, 'binary').toString('base64'));
+                            } else {
+                                reject(new Error('No base64 encoding method available'));
+                            }
+                        }
+                    }).catch(reject);
+                }
+            });
+        }
+
+        const prompt = `
+            Analyze this image and extract any QR code data.
+            
+            INSTRUCTIONS:
+            1. Look for QR codes in the image
+            2. If you find a QR code, extract ONLY the raw text/URL/data contained in it
+            3. Return ONLY the extracted data, nothing else
+            4. If no QR code is found, return "NO_QR_CODE_FOUND"
+            5. Do not add any explanations, prefixes, or formatting - just return the raw QR code content
+            
+            Return format: Just the QR code content as plain text, or "NO_QR_CODE_FOUND" if none exists.
+        `;
+
+        const result = await visionModel.generateContent([
+            prompt,
+            {
+                inlineData: {
+                    data: imageBase64,
+                    mimeType: mimeType,
+                },
+            },
+        ]);
+
+        const responseText = result.response.text().trim();
+
+        // Check if QR code was found
+        if (!responseText || responseText === 'NO_QR_CODE_FOUND' || responseText.toLowerCase().includes('no qr code')) {
+            return null;
+        }
+
+        // Clean up the response - remove any extra text that might have been added
+        let qrData = responseText;
+
+        // Remove common prefixes/suffixes that AI might add
+        qrData = qrData.replace(/^(qr code:|qr code data:|extracted data:|data:)/i, '').trim();
+        qrData = qrData.replace(/["']/g, ''); // Remove quotes
+
+        // If it looks like the AI gave an explanation, try to extract just the URL/data
+        // Look for URLs in the response
+        const urlMatch = qrData.match(/https?:\/\/[^\s]+/i);
+        if (urlMatch) {
+            return urlMatch[0];
+        }
+
+        // If it's a short string (likely the QR data itself), return it
+        if (qrData.length < 500) {
+            return qrData;
+        }
+
+        return null;
+    } catch (error) {
+        console.error("Error extracting QR code from image:", error);
         throw error;
     }
 };

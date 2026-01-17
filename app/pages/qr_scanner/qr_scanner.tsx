@@ -1,5 +1,9 @@
-import { analyzeQrCode } from '@/services/calls/gemini';
+import { useAuth } from '@/services/auth/authContext';
+import { analyzeQrCode, extractQrCodeFromImage } from '@/services/calls/gemini';
+import { safeBrowsingCheck } from '@/services/calls/safeBrowsing';
+import { recordScan } from '@/services/scanHistory';
 import { setLastQrResult } from '@/services/storage/qrStore';
+import { validateAndNormalizeUrl } from '@/services/utils/urlValidator';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Clipboard from 'expo-clipboard';
@@ -20,21 +24,23 @@ import {
 export default function QRScanner() {
   const [permission, requestPermission] = useCameraPermissions();
   const [loading, setLoading] = useState(false);
-  const [scannedData, setScannedData] = useState<string | null>(null);
+  const [loadingMessage, setLoadingMessage] = useState('Analyzing URL Safety...');
+  // Removed scannedData state as it's not used - manualUrl serves the same purpose
   const [cameraActive, setCameraActive] = useState(false);
   const [manualUrl, setManualUrl] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  
+
   // FIX: Use refs to track lifecycle and prevent multiple triggers
   const isMounted = useRef(true);
   const isProcessingScan = useRef(false);
+  const isAnalyzing = useRef(false); // Prevent multiple simultaneous API calls
   const cameraRef = useRef<CameraView>(null);
   const router = useRouter();
-
-  // FIX: Memoize safety checker to prevent recreation on every render
+  const { user } = useAuth();
 
   useEffect(() => {
     isMounted.current = true;
+    // Alert.alert('Debug User', user ? `Logged in: ${user.id}` : 'No User Found');
     if (!permission?.granted) {
       requestPermission();
     }
@@ -45,42 +51,197 @@ export default function QRScanner() {
 
 
   const safeBrowsingApi = async (url: string) => {
+    // Prevent multiple simultaneous requests
+    if (isAnalyzing.current) {
+      Alert.alert('Analysis in Progress', 'Please wait for the current analysis to complete.');
+      return;
+    }
 
+    // Comprehensive URL validation
+    const validation = validateAndNormalizeUrl(url);
 
+    if (!validation.isValid) {
+      Alert.alert(
+        'Invalid URL',
+        validation.error || 'Please enter a valid URL format.\n\nExample: https://example.com',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    const validatedUrl = validation.normalizedUrl!;
+
+    try {
+      isAnalyzing.current = true;
+      setLoading(true);
+      setLoadingMessage('Validating URL...');
+
+      // Small delay to show validation message
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      setLoadingMessage('Checking Google Safe Browsing database...');
+
+      // Run both checks in parallel for better performance
+      const [safeBrowsingResult, geminiResult] = await Promise.allSettled([
+        (async () => {
+          setLoadingMessage('Checking Google Safe Browsing database...');
+          return await safeBrowsingCheck(validatedUrl);
+        })(),
+        (async () => {
+          setLoadingMessage('Analyzing with AI security engine...');
+          return await analyzeQrCode(validatedUrl);
+        })()
+      ]);
+
+      setLoadingMessage('Combining results...');
+
+      // Check Safe Browsing results
+      let hasThreats = false;
+      let threatDetails = '';
+      let safeBrowsingSkipped = false;
+
+      if (safeBrowsingResult.status === 'fulfilled') {
+        const sbData = safeBrowsingResult.value;
+        if (sbData === null) {
+          // API key not configured - skip silently
+          safeBrowsingSkipped = true;
+        } else if (sbData.matches && sbData.matches.length > 0) {
+          hasThreats = true;
+          const threats = sbData.matches.map((match: any) =>
+            `${match.threatType} (${match.platformType})`
+          ).join(', ');
+          threatDetails = `Google Safe Browsing detected: ${threats}. `;
+        }
+      }
+
+      // Get Gemini analysis results
+      let finalRisk: 'LOW' | 'MEDIUM' | 'HIGH' = 'LOW';
+      let finalScore = 0;
+      let finalReason = '';
+
+      if (geminiResult.status === 'fulfilled') {
+        const geminiData = geminiResult.value;
+        finalRisk = geminiData.risk || 'LOW';
+        finalScore = geminiData.score || 0;
+        finalReason = geminiData.reason || 'No specific threats detected.';
+      } else {
+        console.error('Gemini analysis failed:', geminiResult.reason);
+        finalReason = 'AI analysis unavailable. ';
+      }
+
+      // Combine results: Safe Browsing threats override Gemini analysis
+      if (hasThreats) {
+        finalRisk = 'HIGH';
+        finalScore = Math.min(finalScore, 10); // Ensure low safety score if threats found
+        finalReason = threatDetails + finalReason;
+      }
+
+      // Combine Safe Browsing failure info if applicable
+      // Note: We don't add Safe Browsing status to conclusion - Gemini analysis is sufficient
+      if (safeBrowsingSkipped || (safeBrowsingResult.status === 'fulfilled' && safeBrowsingResult.value === null)) {
+        // API key not configured or invalid - silently skip
+        // Analysis continues with Gemini only, which is sufficient
+      } else if (safeBrowsingResult.status === 'rejected') {
+        // This should rarely happen now since we return null instead of throwing
+        // But handle it gracefully if it does
+        const error = safeBrowsingResult.reason;
+        // Only log if it's not an API key related error
+        if (!(error && typeof error === 'object' && 'isApiKeyError' in error)) {
+          console.warn('Safe Browsing check failed:', error);
+        }
+        // Don't add to conclusion - Gemini analysis is sufficient
+      }
+
+      // Format Safe Browsing result for display
+      let safeBrowsingText = 'Not checked';
+      if (safeBrowsingSkipped || (safeBrowsingResult.status === 'fulfilled' && safeBrowsingResult.value === null)) {
+        safeBrowsingText = 'API key not configured - check skipped';
+      } else if (safeBrowsingResult.status === 'fulfilled') {
+        const sbData = safeBrowsingResult.value;
+        if (sbData && sbData.matches && sbData.matches.length > 0) {
+          const threats = sbData.matches.map((match: any) => `${match.threatType}`).join(', ');
+          safeBrowsingText = `⚠️ THREATS DETECTED: ${threats}`;
+        } else {
+          safeBrowsingText = '✓ No threats detected';
+        }
+      } else if (safeBrowsingResult.status === 'rejected') {
+        safeBrowsingText = 'Check failed - Gemini analysis used instead';
+      }
+
+      // Format Gemini result for display
+      const geminiText = finalReason.trim() || 'Analysis completed.';
+
+      // Save result and navigate
+      const result = {
+        risk: finalRisk,
+        score: finalScore,
+        reason: finalReason.trim() || 'Analysis completed.',
+        content: validatedUrl,
+        safeBrowsingResult: safeBrowsingText,
+        geminiResult: geminiText
+      };
+
+      setLastQrResult(result);
+
+      // Record scan in history
+      if (user) {
+        // Map risk to status
+        const status = finalRisk === 'HIGH' ? 'Dangerous' : finalRisk === 'MEDIUM' ? 'Suspicious' : 'Safe';
+        recordScan(user.id, 'QR', status, `${validatedUrl.substring(0, 30)}...`, result);
+      }
+
+      // Small delay before navigation to show completion
+      setLoadingMessage('Analysis complete!');
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      router.push('/pages/qr_scanner/scan_result');
+    } catch (error) {
+      console.error('Analysis error:', error);
+      Alert.alert('Error', 'Failed to analyze the URL. Please try again.');
+    } finally {
+      if (isMounted.current) {
+        setLoading(false);
+        setLoadingMessage('Analyzing URL Safety...');
+      }
+      isAnalyzing.current = false;
+    }
   }
 
-  // const sentToGemini = async () => {
-  //   if (!url.trim()) {
-  //     Alert.alert('Error', 'Please enter a valid URL');
-  //     return;
-  //   }
-
-  //   try {
-  //     setLoading(true);
-  //     const result = await analyzeQrCode(url);
-  //     if (result) {
-  //       // Save to shared store and navigate without params (previous behaviour)
-  //       setLastQrResult({ ...result, content: url });
-  //       router.push('/pages/qr_scanner/scan_result');
-  //     }
-  //   } catch (error) {
-  //     console.error('Analysis error:', error);
-  //     Alert.alert('Error', 'Failed to analyze the URL');
-  //   } finally {
-  //     if (isMounted.current) setLoading(false);
-  //   }
-  // };
 
   const handleBarcodeScanned = async ({ data }: { data: string }) => {
     // FIX: Comprehensive check to prevent multiple fires and ensure camera is active
     if (!cameraActive || isProcessingScan.current) return;
-    
+
     isProcessingScan.current = true;
     setCameraActive(false); // FIX: Immediately disable camera view
-    
-    setScannedData(data);
-    setManualUrl(data);
 
+
+
+    // Validate the scanned QR code data
+    const validation = validateAndNormalizeUrl(data);
+
+    if (validation.isValid) {
+      // Valid URL - set normalized version
+      setManualUrl(validation.normalizedUrl!);
+
+      // Auto analyze
+      safeBrowsingApi(validation.normalizedUrl!);
+    } else {
+      // Not a valid URL, but still show the raw data so user can edit it
+      setManualUrl(data);
+
+      // Record as Safe/Unknown since it's just text
+      if (user) {
+        recordScan(user.id, 'QR', 'Safe', data.substring(0, 30));
+      }
+
+      // Show validation error but don't block the user
+      Alert.alert(
+        'QR Code Scanned',
+        `Scanned content: ${data.substring(0, 50)}${data.length > 50 ? '...' : ''}\n\n${validation.error || 'This QR code does not contain a valid URL.'}\n\nYou can edit it manually if needed.`,
+        [{ text: 'OK' }]
+      );
+    }
 
     // Reset processing lock after a delay to allow future scans
     setTimeout(() => {
@@ -88,7 +249,7 @@ export default function QRScanner() {
     }, 1000);
   };
 
-  
+
 
   const handleCopyToClipboard = async () => {
     if (manualUrl) {
@@ -100,15 +261,18 @@ export default function QRScanner() {
   const pickImageFromGallery = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        // Using array format for new API (MediaTypeOptions deprecated)
+        mediaTypes: ['images'],
         allowsEditing: false,
         quality: 1,
+        base64: true, // Get base64 for easier processing
       });
 
       if (!result.canceled && result.assets.length > 0) {
-        const imageUri = result.assets[0].uri;
+        const imageAsset = result.assets[0];
+        const imageUri = imageAsset.uri;
         setSelectedImage(imageUri);
-        scanImageForBarcode(imageUri);
+        scanImageForBarcode(imageUri, imageAsset.base64 || undefined);
       }
     } catch (error) {
       console.error('Error picking image:', error);
@@ -116,19 +280,93 @@ export default function QRScanner() {
     }
   };
 
-  const scanImageForBarcode = async (imageUri: string) => {
-    setLoading(true);
+  const scanImageForBarcode = async (imageUri: string, base64Data?: string) => {
+    // Prevent multiple simultaneous image scans
+    if (isAnalyzing.current) {
+      Alert.alert('Processing in Progress', 'Please wait for the current image processing to complete.');
+      return;
+    }
+
     try {
-      // Manual QR decoding from images logic would go here
-      if (isMounted.current) setLoading(false);
-      Alert.alert('Image Selected', 'Please manually enter the URL from the QR code, or use the Camera to scan it directly.');
-    } catch (error) {
-      console.error('Error with image:', error);
+      isAnalyzing.current = true;
+      setLoading(true);
+      setLoadingMessage('Processing image...');
+
+      // Use base64 if available, otherwise use URI
+      const imageData = base64Data
+        ? `data:image/jpeg;base64,${base64Data}`
+        : imageUri;
+
+      setLoadingMessage('Extracting QR code from image...');
+      const qrData = await extractQrCodeFromImage(imageData);
+
+      if (!qrData) {
+        if (isMounted.current) {
+          setLoading(false);
+          setLoadingMessage('Analyzing URL Safety...');
+        }
+        isAnalyzing.current = false;
+        Alert.alert(
+          'No QR Code Found',
+          'No QR code was detected in the selected image. Please try another image or use the camera to scan directly.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Validate the extracted QR code data
+      const qrValidation = validateAndNormalizeUrl(qrData);
+
+      if (!qrValidation.isValid) {
+        // QR code found but not a valid URL - still show it to user
+        setManualUrl(qrData);
+
+        if (isMounted.current) {
+          setLoading(false);
+          setLoadingMessage('Analyzing URL Safety...');
+        }
+        isAnalyzing.current = false;
+
+        Alert.alert(
+          'QR Code Detected (Not a URL)',
+          `Found QR code content: ${qrData.substring(0, 50)}${qrData.length > 50 ? '...' : ''}\n\n${qrValidation.error || 'This QR code does not contain a valid URL.'}\n\nYou can edit it manually if needed.`,
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Valid URL found - set it in the input field
+      setManualUrl(qrValidation.normalizedUrl!);
+
       if (isMounted.current) {
         setLoading(false);
+      }
+
+      // Optionally auto-analyze the QR code
+      Alert.alert(
+        'QR Code Detected',
+        `Found QR code: ${qrValidation.normalizedUrl!.substring(0, 50)}${qrValidation.normalizedUrl!.length > 50 ? '...' : ''}\n\nWould you like to analyze it now?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Analyze',
+            onPress: () => safeBrowsingApi(qrValidation.normalizedUrl!)
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error scanning image for QR code:', error);
+      if (isMounted.current) {
+        setLoading(false);
+        setLoadingMessage('Analyzing URL Safety...');
         setSelectedImage(null);
       }
-      Alert.alert('Error', 'Unable to process image');
+      Alert.alert(
+        'Error',
+        error instanceof Error ? error.message : 'Unable to process image. Please try again.'
+      );
+    } finally {
+      isAnalyzing.current = false;
     }
   };
 
@@ -162,7 +400,8 @@ export default function QRScanner() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#2563EB" />
-        <Text style={styles.loadingText}>Analyzing URL Safety...</Text>
+        <Text style={styles.loadingText}>{loadingMessage}</Text>
+        <Text style={styles.loadingSubtext}>This may take a few seconds...</Text>
       </View>
     );
   }
@@ -178,30 +417,30 @@ export default function QRScanner() {
           }}
           // FIX: Only pass handler if camera is logically active
           onBarcodeScanned={cameraActive ? handleBarcodeScanned : undefined}
-        >
-          <View style={styles.cameraOverlay}>
-            <View style={styles.cornerTopLeft} />
-            <View style={styles.cornerTopRight} />
-            <View style={styles.cornerBottomLeft} />
-            <View style={styles.cornerBottomRight} />
+        />
+        <View style={styles.cameraOverlay}>
+          <View style={styles.cornerTopLeft} />
+          <View style={styles.cornerTopRight} />
+          <View style={styles.cornerBottomLeft} />
+          <View style={styles.cornerBottomRight} />
 
-            <Ionicons
-              name="camera-outline"
-              size={50}
-              color="#999"
-              style={styles.cameraIcon}
-            />
-            <Text style={styles.cameraText}>Point camera at a QR code</Text>
+          <Ionicons
+            name="camera-outline"
+            size={50}
+            color="#999"
+            style={styles.cameraIcon}
+          />
+          <Text style={styles.cameraText}>Point camera at a QR code</Text>
 
-            <TouchableOpacity
-              style={styles.closeCameraButton}
-              onPress={() => setCameraActive(false)}
-            >
-              <Ionicons name="close" size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
-        </CameraView>
-      </View>
+          <TouchableOpacity
+            style={styles.closeCameraButton}
+            onPress={() => setCameraActive(false)}
+          >
+            <Ionicons name="close" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
+
+      </View >
     );
   }
 
@@ -230,7 +469,6 @@ export default function QRScanner() {
                 onPress={() => {
                   setSelectedImage(null);
                   setManualUrl('');
-                  setScannedData(null);
                 }}
               >
                 <Ionicons name="close" size={20} color="#fff" />
@@ -245,16 +483,18 @@ export default function QRScanner() {
 
           <View style={styles.buttonGroup}>
             <TouchableOpacity
-              style={styles.activateCameraButton}
+              style={[styles.activateCameraButton, (loading || isAnalyzing.current) && styles.buttonDisabled]}
               onPress={() => setCameraActive(true)}
+              disabled={loading || isAnalyzing.current}
             >
               <Ionicons name="camera" size={20} color="#fff" style={styles.buttonIcon} />
               <Text style={styles.activateCameraButtonText}>Camera</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.galleryButton}
+              style={[styles.galleryButton, (loading || isAnalyzing.current) && styles.buttonDisabled]}
               onPress={pickImageFromGallery}
+              disabled={loading || isAnalyzing.current}
             >
               <Ionicons name="image" size={20} color="#fff" style={styles.buttonIcon} />
               <Text style={styles.galleryButtonText}>Gallery</Text>
@@ -285,10 +525,16 @@ export default function QRScanner() {
           </View>
           {manualUrl && (
             <TouchableOpacity
-              style={styles.analyzeButton}
+              style={[styles.analyzeButton, loading && styles.analyzeButtonDisabled]}
               onPress={() => safeBrowsingApi(manualUrl)}
+              disabled={loading || isAnalyzing.current}
             >
-              <Text style={styles.analyzeButtonText}>Analyze URL</Text>
+              {loading ? (
+                <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />
+              ) : null}
+              <Text style={styles.analyzeButtonText}>
+                {loading ? 'Analyzing...' : 'Analyze URL'}
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -318,11 +564,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cameraOverlay: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
   },
   cornerTopLeft: {
     position: 'absolute',
@@ -581,9 +826,23 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 16,
-    fontSize: 14,
+    fontSize: 16,
     color: '#2563EB',
     fontWeight: '600',
+    textAlign: 'center',
+  },
+  loadingSubtext: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '400',
+    textAlign: 'center',
+  },
+  analyzeButtonDisabled: {
+    opacity: 0.6,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
   },
   permissionContainer: {
     flex: 1,

@@ -1,6 +1,11 @@
-import { Link } from "expo-router";
-import React from "react";
+import { useAuth } from "@/services/auth/authContext";
+import { db } from "@/services/firebase";
+import { Ionicons } from "@expo/vector-icons";
+import { Link, Redirect, router } from "expo-router";
+import { collection, doc, limit, onSnapshot, orderBy, query } from "firebase/firestore";
+import React, { useEffect, useState } from "react";
 import {
+  Alert,
   Platform,
   ScrollView,
   StyleSheet,
@@ -10,12 +15,106 @@ import {
   View,
 } from "react-native";
 
+// Simple helper for time ago
+const formatTimeAgo = (date: any) => {
+  if (!date) return '';
+  const now = new Date();
+  const diff = (now.getTime() - date.toMillis()) / 1000; // diff in seconds
+
+  if (diff < 60) return 'Just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} h ago`;
+  return `${Math.floor(diff / 86400)} d ago`;
+};
+
 export default function Index() {
   const { width } = useWindowDimensions();
+  const { user, signOut, isSignedIn, isInitializing } = useAuth();
+
+  const [stats, setStats] = useState({ scansToday: 0, threatsBlocked: 0, appsAnalyzed: 0, safetyScore: 100 });
+  const [recentScans, setRecentScans] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    // Listen to User Stats
+    const userUnsub = onSnapshot(doc(db, 'users', user.id), (doc) => {
+      if (doc.exists()) {
+        const data = doc.data();
+        setStats(data.stats || { scansToday: 0, threatsBlocked: 0, appsAnalyzed: 0, safetyScore: 100 });
+      }
+    });
+
+    // Listen to History (Last 3)
+    const historyRef = collection(db, 'users', user.id, 'history');
+    const q = query(historyRef, orderBy('timestamp', 'desc'), limit(3));
+    const historyUnsub = onSnapshot(q, (snapshot) => {
+      const scans = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setRecentScans(scans);
+    });
+
+    return () => {
+      userUnsub();
+      historyUnsub();
+    }
+  }, [user]);
   const isWeb = Platform.OS === "web";
   const toolItemWidth = isWeb && width > 900 ? "48%" : "100%";
   const toolItemMarginBottom = isWeb ? 12 : 18;
   const toolListStyle = isWeb ? { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" } : {};
+
+  if (isInitializing) return null;
+
+  if (!isSignedIn) {
+    return <Redirect href="/auth" />;
+  }
+
+  const handleSignOut = () => {
+    if (Platform.OS === 'web') {
+      if (window.confirm("Are you sure you want to sign out?")) {
+        signOut().then(() => {
+          router.replace("/auth");
+        });
+      }
+    } else {
+      Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: async () => {
+            await signOut();
+            router.replace("/auth");
+          },
+        },
+      ]);
+    }
+  };
+
+  const handleRecentPress = (scan: any) => {
+    let pathname = "" as any;
+    if (scan.type === "QR") {
+      pathname = "/pages/qr_scanner/scan_result";
+    } else if (["Email", "SMS", "URL"].includes(scan.type)) {
+      pathname = "/pages/phishing/scan_result";
+    } else if (scan.type === "Breach") {
+      pathname = "/pages/breach_check/breach_result";
+    }
+
+    if (pathname) {
+      // Serialize timestamp and other non-string data
+      const params = { ...scan };
+      if (scan.timestamp?.toDate) {
+        params.timestamp = scan.timestamp.toDate().toISOString();
+      }
+
+      router.push({
+        pathname,
+        params
+      });
+    }
+  };
+
   return (
     <View style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container}>
@@ -27,16 +126,26 @@ export default function Index() {
             <Text style={styles.appTitle}>CyberTrust</Text>
             <Text style={styles.appSubtitle}>Guardian</Text>
           </View>
+          <TouchableOpacity style={styles.headerButton} onPress={handleSignOut}>
+            <Ionicons name="log-out-outline" size={24} color="#2563EB" />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.themeToggle}>
             <Text style={{ fontSize: 28 }}>◐</Text>
           </TouchableOpacity>
         </View>
 
+        {user && (
+          <View style={styles.userCard}>
+            <Text style={styles.userGreeting}>Welcome back, {user.fullName}!</Text>
+            <Text style={styles.userEmail}>{user.email}</Text>
+          </View>
+        )}
+
         <View style={styles.statusCard}>
           <View style={styles.statusContent}>
             <Text style={styles.statusTitle}>System Secure</Text>
             <Text style={styles.statusSubtitle}>
-              Your device is protected. 47 threats blocked this week.
+              Your device is protected. {stats.threatsBlocked} threats blocked.
             </Text>
           </View>
           <View style={styles.riskPill}>
@@ -49,22 +158,22 @@ export default function Index() {
         <View style={styles.activityGrid}>
           <View style={styles.activityCard}>
             <Text style={styles.activityIcon}>📈</Text>
-            <Text style={styles.activityNumber}>12</Text>
+            <Text style={styles.activityNumber}>{stats.scansToday}</Text>
             <Text style={styles.activityLabel}>Scans Today</Text>
           </View>
           <View style={styles.activityCard}>
             <Text style={styles.activityIcon}>⚠️</Text>
-            <Text style={styles.activityNumber}>47</Text>
+            <Text style={styles.activityNumber}>{stats.threatsBlocked}</Text>
             <Text style={styles.activityLabel}>Threats Blocked</Text>
           </View>
           <View style={styles.activityCard}>
             <Text style={styles.activityIcon}>🧾</Text>
-            <Text style={styles.activityNumber}>23</Text>
+            <Text style={styles.activityNumber}>{stats.appsAnalyzed}</Text>
             <Text style={styles.activityLabel}>Apps Analyzed</Text>
           </View>
           <View style={styles.activityCard}>
             <Text style={styles.activityIcon}>✔️</Text>
-            <Text style={styles.activityNumber}>98%</Text>
+            <Text style={styles.activityNumber}>{stats.safetyScore}%</Text>
             <Text style={styles.activityLabel}>Safety Score</Text>
           </View>
         </View>
@@ -148,35 +257,25 @@ export default function Index() {
         <Text style={styles.sectionTitle}>Recent Scans</Text>
 
         <View style={styles.recentList}>
-          <View style={styles.recentItem}>
-            <View>
-              <Text style={styles.recentLabel}>Email</Text>
-              <Text style={styles.recentTime}>2 min ago</Text>
+          {recentScans.length === 0 ? (
+            <View style={{ padding: 20, alignItems: 'center' }}>
+              <Text style={{ color: '#9ca3af' }}>No recent activity</Text>
             </View>
-            <View style={styles.recentStatusSafe}>
-              <Text style={styles.recentStatusText}>Safe</Text>
-            </View>
-          </View>
-
-          <View style={styles.recentItem}>
-            <View>
-              <Text style={styles.recentLabel}>QR Code</Text>
-              <Text style={styles.recentTime}>15 min ago</Text>
-            </View>
-            <View style={styles.recentStatusSusp}>
-              <Text style={styles.recentStatusText}>Suspicious</Text>
-            </View>
-          </View>
-
-          <View style={styles.recentItem}>
-            <View>
-              <Text style={styles.recentLabel}>App</Text>
-              <Text style={styles.recentTime}>1 hour ago</Text>
-            </View>
-            <View style={styles.recentStatusSafe}>
-              <Text style={styles.recentStatusText}>Safe</Text>
-            </View>
-          </View>
+          ) : (
+            recentScans.map((scan) => (
+              <TouchableOpacity key={scan.id} style={styles.recentItem} onPress={() => handleRecentPress(scan)}>
+                <View>
+                  <Text style={styles.recentLabel}>{scan.type || 'Unknown Scan'}</Text>
+                  <Text style={styles.recentTime}>{formatTimeAgo(scan.timestamp)}</Text>
+                </View>
+                <View style={scan.status === 'Safe' ? styles.recentStatusSafe : styles.recentStatusSusp}>
+                  <Text style={[styles.recentStatusText, scan.status !== 'Safe' && { color: '#DC2626' }]}>
+                    {scan.status || 'Unknown'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
         </View>
       </ScrollView>
     </View>
@@ -191,7 +290,13 @@ const styles = StyleSheet.create({
   appBadgeEmoji: { fontSize: 20 },
   appTitle: { fontSize: 18, fontWeight: "700" },
   appSubtitle: { color: "#6b7280" },
+  headerButton: { padding: 8, marginRight: 8 },
+  headerButtonText: { fontSize: 20, color: "#2563EB", fontWeight: "600" },
   themeToggle: { padding: 8 },
+
+  userCard: { backgroundColor: "#EFF6FF", borderRadius: 12, padding: 14, marginBottom: 16, borderLeftWidth: 4, borderLeftColor: "#2563EB" },
+  userGreeting: { fontSize: 16, fontWeight: "700", color: "#1E40AF", marginBottom: 4 },
+  userEmail: { fontSize: 13, color: "#1E40AF" },
 
   statusCard: { backgroundColor: "#0f9d58", borderRadius: 12, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16, paddingRight: 20, overflow: 'hidden' },
   statusTitle: { color: "#fff", fontSize: 18, fontWeight: "700" },
