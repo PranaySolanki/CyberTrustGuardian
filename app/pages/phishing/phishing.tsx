@@ -4,8 +4,8 @@ import { safeBrowsingCheck } from '@/services/calls/safeBrowsing'
 import { db } from '@/services/firebase/firebase'
 import { setLastPhishingResult } from '@/services/storage/phishingStore'
 import { recordScan } from '@/services/storage/scanHistory'
-import { Ionicons } from '@expo/vector-icons'
 import { validateAndNormalizeUrl } from '@/services/utils/urlValidator'
+import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore'
 import React, { useEffect, useState } from 'react'
@@ -188,13 +188,13 @@ export default function Phishing() {
           analysis = geminiRes.value;
         } else {
           console.error('Gemini analysis failed:', geminiRes.reason);
-          analysis = { risk: 'UNKNOWN', score: 0, reason: 'AI analysis unavailable.' };
         }
 
         if (sbRes.status === 'fulfilled') {
           sbResult = sbRes.value;
         }
-      } else {
+      }
+      else {
         // Just Gemini for Email/SMS
         analysis = await analyzePhisingAttempt(text, activeTab.toUpperCase() as any);
       }
@@ -246,7 +246,7 @@ export default function Phishing() {
       router.push({ pathname: '/pages/phishing/scan_result' })
     } catch (error) {
       setLoading(false);
-      console.error('Analysis error:', error);
+      console.log('Analysis error:', error);
       alert('An error occurred during analysis. Please try again.');
     }
   }
