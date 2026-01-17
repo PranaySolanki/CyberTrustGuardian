@@ -1,13 +1,13 @@
 import { Link } from "expo-router";
 import React from "react";
 import {
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
-  Platform,
   useWindowDimensions,
+  View,
 } from "react-native";
 
 export default function Index() {
@@ -73,7 +73,7 @@ export default function Index() {
 
         <View style={styles.toolList}>
           <Link href="/pages/phishing/phishing" style={{ textDecorationLine: "none" }}>
-            <View style={[styles.toolItem, { width: toolItemWidth, marginBottom: toolItemMarginBottom }] }>
+            <View style={[styles.toolItem, { width: toolItemWidth, marginBottom: toolItemMarginBottom }]}>
               <View style={[styles.toolIcon, { backgroundColor: "#ff6b6b" }]}>
                 <Text style={styles.toolIconEmoji}>✉️</Text>
               </View>
@@ -86,7 +86,7 @@ export default function Index() {
           </Link>
 
           <Link href="/pages/qr_scanner/qr_scanner" style={{ textDecorationLine: "none" }}>
-            <View style={[styles.toolItem, { width: toolItemWidth, marginBottom: toolItemMarginBottom }] }>
+            <View style={[styles.toolItem, { width: toolItemWidth, marginBottom: toolItemMarginBottom }]}>
               <View style={[styles.toolIcon, { backgroundColor: "#4d9cff" }]}>
                 <Text style={styles.toolIconEmoji}>📸</Text>
               </View>
@@ -99,7 +99,7 @@ export default function Index() {
           </Link>
 
           <Link href="/pages/app_detection/app_detection" style={{ textDecorationLine: "none" }}>
-            <View style={[styles.toolItem, { width: toolItemWidth, marginBottom: toolItemMarginBottom }] }>
+            <View style={[styles.toolItem, { width: toolItemWidth, marginBottom: toolItemMarginBottom }]}>
               <View style={[styles.toolIcon, { backgroundColor: "#a77bff" }]}>
                 <Text style={styles.toolIconEmoji}>🔒</Text>
               </View>
@@ -119,8 +119,13 @@ export default function Index() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.toolTitle}>Device Integrity Check</Text>
                 <Text style={styles.toolSub}>Root & emulator detection</Text>
+              </View>
+              <Text style={styles.chev}>›</Text>
+            </View>
+          </Link>
+
           <Link href="/pages/breach_check/breach" style={{ textDecorationLine: "none" }}>
-            <View style={[styles.toolItem, { width: toolItemWidth, marginBottom: toolItemMarginBottom }] }>
+            <View style={[styles.toolItem, { width: toolItemWidth, marginBottom: toolItemMarginBottom }]}>
               <View style={[styles.toolIcon, { backgroundColor: "#ffd166" }]}>
                 <Text style={styles.toolIconEmoji}>🔐</Text>
               </View>
@@ -134,11 +139,11 @@ export default function Index() {
         </View>
 
         <View style={styles.tipCard}>
-            <Text style={styles.tipTitle}>🛡️ Security Tip</Text>
-            <Text style={styles.tipText}>
-              Always verify sender email addresses before clicking links. Hover over links to preview the destination URL.
-            </Text>
-          </View>
+          <Text style={styles.tipTitle}>🛡️ Security Tip</Text>
+          <Text style={styles.tipText}>
+            Always verify sender email addresses before clicking links. Hover over links to preview the destination URL.
+          </Text>
+        </View>
 
         <Text style={styles.sectionTitle}>Recent Scans</Text>
 
