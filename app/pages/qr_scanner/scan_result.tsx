@@ -1,21 +1,33 @@
 import { clearLastQrResult, getLastQrResult, QRResult } from '@/services/storage/qrStore'
 import * as Clipboard from 'expo-clipboard'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import { Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
 export default function ScanResult() {
+  const params = useLocalSearchParams()
   const [data, setData] = useState<QRResult | null>(null)
 
   useEffect(() => {
-    const last = getLastQrResult()
-    if (last) {
-      setData(last)
-      clearLastQrResult()
-    } else {
-      setData(null)
+    if (params.content) {
+      // Historical data from params
+      setData({
+        risk: params.risk as any,
+        score: parseInt(params.score as string) || 0,
+        reason: params.reason as string,
+        content: params.content as string,
+        safeBrowsingResult: params.safeBrowsingResult as string,
+        geminiResult: params.geminiResult as string,
+      })
+    } else if (!data) {
+      // Only pull from last result if we don't have data yet
+      const last = getLastQrResult()
+      if (last) {
+        setData(last)
+        clearLastQrResult()
+      }
     }
-  }, [])
+  }, [params.content, params.id])
 
   const handleCopy = async () => {
     if (data?.content) {
@@ -26,7 +38,7 @@ export default function ScanResult() {
 
   const handleOpen = async () => {
     if (!data?.content) return
-    
+
     // Warn user if URL is high risk
     if (data.risk === 'HIGH') {
       Alert.alert(
@@ -49,7 +61,7 @@ export default function ScanResult() {
       )
       return
     }
-    
+
     // Medium risk warning
     if (data.risk === 'MEDIUM') {
       Alert.alert(
@@ -71,7 +83,7 @@ export default function ScanResult() {
       )
       return
     }
-    
+
     // Low risk - open directly
     try {
       await Linking.openURL(data.content)

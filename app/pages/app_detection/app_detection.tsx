@@ -1,3 +1,5 @@
+import { useAuth } from "@/services/auth/authContext";
+import { recordScan } from "@/services/scanHistory";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { useRouter } from "expo-router";
@@ -30,6 +32,7 @@ const mockApps: AppItem[] = [
 export default function AppDetection() {
   // ✅ STATE MUST BE HERE (before return)
   const [selectedApk, setSelectedApk] = useState<string | null>(null);
+  const { user } = useAuth();
   const router = useRouter();
 
   const pickApk = async () => {
@@ -45,14 +48,20 @@ export default function AppDetection() {
       console.log("APK selection error:", error);
     }
   };
-const handleScan = () =>{
-  router.push("/pages/app_detection/scan_result");
-}
+  const handleScan = async (appName: string) => {
+    if (user) {
+      recordScan(user.id, 'App', 'Safe', appName);
+    }
+    router.push("/pages/app_detection/scan_result");
+  }
 
-  const apkHandleScan = () => {
+  const apkHandleScan = async () => {
     if (!selectedApk) {
       Alert.alert("APK Required", "Please add APK first ⚠️");
       return;
+    }
+    if (user) {
+      recordScan(user.id, 'App', 'Safe', selectedApk);
     }
     router.push("/pages/app_detection/scan_result");
   };
@@ -66,7 +75,7 @@ const handleScan = () =>{
           </View>
           <Text style={styles.appName}>{item.name}</Text>
         </View>
-          <TouchableOpacity style={styles.scanBtn} onPress={handleScan}>
+        <TouchableOpacity style={styles.scanBtn} onPress={() => handleScan(item.name)}>
           <Text style={styles.scanText}>Scan</Text>
         </TouchableOpacity>
       </View>

@@ -4,14 +4,14 @@ import { GoogleGenerativeAI, Schema, SchemaType } from "@google/generative-ai";
 const raw_api_key = (process.env.EXPO_PUBLIC_GEMINI_API_KEY)?.toString();
 
 if (!raw_api_key) {
-  throw new Error("EXPO_PUBLIC_GEMINI_API_KEY environment variable is not set");
+    throw new Error("EXPO_PUBLIC_GEMINI_API_KEY environment variable is not set");
 }
 
 function rot13(str: string) {
-  return str.replace(/[A-Za-z]/g, (c) => {
-    const base = c <= "Z" ? 65 : 97;
-    return String.fromCharCode(((c.charCodeAt(0) - base + 13) % 26) + base);
-  });
+    return str.replace(/[A-Za-z]/g, (c) => {
+        const base = c <= "Z" ? 65 : 97;
+        return String.fromCharCode(((c.charCodeAt(0) - base + 13) % 26) + base);
+    });
 }
 
 // Decode the ROT13-encoded value stored in the env var
@@ -21,40 +21,40 @@ const api_key = rot13(raw_api_key);
 const genAI = new GoogleGenerativeAI(api_key);
 
 const schema: Schema = {
-  type: SchemaType.OBJECT,
-  description: "Security analysis result",
-  properties: {
-    risk: {
-      type: SchemaType.STRING,
-      description: "Risk level: LOW, MEDIUM, or HIGH",
-      nullable: false,
+    type: SchemaType.OBJECT,
+    description: "Security analysis result",
+    properties: {
+        risk: {
+            type: SchemaType.STRING,
+            description: "Risk level: LOW, MEDIUM, or HIGH",
+            nullable: false,
+        },
+        score: {
+            type: SchemaType.NUMBER,
+            description: "Safety score from 0-100",
+            nullable: false,
+        },
+        reason: {
+            type: SchemaType.STRING,
+            description: "Brief explanation of why this risk level was assigned",
+            nullable: false,
+        },
     },
-    score: {
-      type: SchemaType.NUMBER,
-      description: "Safety score from 0-100",
-      nullable: false,
-    },
-    reason: {
-      type: SchemaType.STRING,
-      description: "Brief explanation of why this risk level was assigned",
-      nullable: false,
-    },
-  },
-  required: ["risk", "score", "reason"],
+    required: ["risk", "score", "reason"],
 };
 
 // Now pass it to the model
 const model = genAI.getGenerativeModel({
-  model: "gemini-2.5-flash",
-  generationConfig: {
-    responseMimeType: "application/json",
-    responseSchema: schema, 
-  },
+    model: "gemini-2.5-flash-lite",
+    generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: schema,
+    },
 });
 
 // Vision model for image analysis (no schema needed for QR extraction)
 const visionModel = genAI.getGenerativeModel({
-  model: "gemini-2.5-flash",
+    model: "gemini-2.5-flash-lite",
 });
 
 
@@ -83,7 +83,7 @@ export const analyzePhisingAttempt = async (content: string, type: 'EMAIL' | 'SM
         OUTPUT FORMAT:
         You must return JSON with:
         - risk: "LOW", "MEDIUM", or "HIGH"
-        - score: (0-100, where 100 is most dangerous)
+        - score: (0-100, where 100 is safest)
         - reason: A technical explanation of the specific red flags found.
         
         Content to analyze: "${content}"
@@ -92,7 +92,7 @@ export const analyzePhisingAttempt = async (content: string, type: 'EMAIL' | 'SM
     try {
         const result = await model.generateContent(prompt);
         const responseText = result.response.text();
-        
+
         if (!responseText) {
             throw new Error("Empty response from Gemini API");
         }
@@ -125,7 +125,7 @@ export const analyzeQrCode = async (content: string) => {
         OUTPUT FORMAT (JSON ONLY):
         {
         "risk": "LOW" | "MEDIUM" | "HIGH",
-        "score": 0-100,
+        "score": 0-100 (where 100 is safest),
         "reason": "Detailed explanation of red flags (e.g., 'Hidden redirect detected' or 'Impersonation of [Brand]')"
         }
 
@@ -135,7 +135,7 @@ export const analyzeQrCode = async (content: string) => {
     try {
         const result = await model.generateContent(prompt);
         const responseText = result.response.text();
-        
+
         if (!responseText) {
             throw new Error("Empty response from Gemini API");
         }
@@ -182,7 +182,7 @@ export const extractQrCodeFromImage = async (imageUri: string): Promise<string |
             // Handle both file:// URIs (local) and http(s):// URIs (remote)
             const response = await fetch(imageUri);
             const blob = await response.blob();
-            
+
             // Convert blob to base64 using a cross-platform compatible method
             imageBase64 = await new Promise<string>((resolve, reject) => {
                 // Try using FileReader if available (web), otherwise use ArrayBuffer method
@@ -251,11 +251,11 @@ export const extractQrCodeFromImage = async (imageUri: string): Promise<string |
 
         // Clean up the response - remove any extra text that might have been added
         let qrData = responseText;
-        
+
         // Remove common prefixes/suffixes that AI might add
         qrData = qrData.replace(/^(qr code:|qr code data:|extracted data:|data:)/i, '').trim();
         qrData = qrData.replace(/["']/g, ''); // Remove quotes
-        
+
         // If it looks like the AI gave an explanation, try to extract just the URL/data
         // Look for URLs in the response
         const urlMatch = qrData.match(/https?:\/\/[^\s]+/i);

@@ -1,17 +1,19 @@
+import { useAuth } from '@/services/auth/authContext'
 import { breachCheck } from '@/services/calls/breach'
+import { recordScan } from '@/services/scanHistory'
 import { setLastBreachResult } from '@/services/storage/breachStore'
 import { router } from 'expo-router'
 import React, { useState } from 'react'
 import {
-    ActivityIndicator,
-    Dimensions,
-    FlatList,
-    Modal,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  FlatList,
+  Modal,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 
 const { width } = Dimensions.get('window')
@@ -117,6 +119,7 @@ function BreachScanHeader({ activeTab, setActiveTab, text, setText, emailValid, 
 }
 
 export default function Breach() {
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<Tab>('Email Check')
   const [text, setText] = useState('')
   const [scans, setScans] = useState<Scan[]>(initialScans)
@@ -156,10 +159,23 @@ export default function Breach() {
           risk = 'HIGH'
           score = breachesCount >= 5 ? 20 : 40
         }
-        const reason = breachesCount === 0 ? 'No breaches found for this email.' : `Found in ${breachesCount} breach(es): ${res.breaches.slice(0,3).map(b => b.Name).join(', ')}`
+        const reason = breachesCount === 0 ? 'No breaches found for this email.' : `Found in ${breachesCount} breach(es): ${res.breaches.slice(0, 3).map(b => b.Name).join(', ')}`
 
         // Store result in memory (avoid sending sensitive data as URL params)
         setLastBreachResult({ risk, score, reason, content: text.trim() })
+
+        // Record scan
+        if (user) {
+          const status = risk === 'HIGH' ? 'Dangerous' : risk === 'MEDIUM' ? 'Suspicious' : 'Safe';
+          recordScan(user.id, 'Breach', status, `Email: ${text.trim()}`, {
+            risk,
+            score,
+            reason,
+            content: text.trim(),
+            type: 'Email'
+          });
+        }
+
         router.push({ pathname: '/pages/breach_check/breach_result' })
         setText('')
         return
@@ -188,6 +204,19 @@ export default function Breach() {
 
       // Store result in memory (avoid sending sensitive data as URL params)
       setLastBreachResult({ risk, score, reason, content: 'Password (hidden for security)' })
+
+      // Record scan
+      if (user) {
+        const status = risk === 'HIGH' ? 'Dangerous' : risk === 'MEDIUM' ? 'Suspicious' : 'Safe';
+        recordScan(user.id, 'Breach', status, 'Password Check', {
+          risk,
+          score,
+          reason,
+          content: 'Password (hidden for security)',
+          type: 'Password'
+        });
+      }
+
       router.push({ pathname: '/pages/breach_check/breach_result' })
       setText('')
     } catch (error: any) {

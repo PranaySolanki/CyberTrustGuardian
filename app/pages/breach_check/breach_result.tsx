@@ -1,20 +1,28 @@
 import { clearLastBreachResult, getLastBreachResult } from '@/services/storage/breachStore'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
 export default function BreachResult() {
+  const params = useLocalSearchParams()
   const [data, setData] = useState<{ risk?: string; score?: number; reason?: string; content?: string } | null>(null)
 
   useEffect(() => {
-    const last = getLastBreachResult()
-    if (last) {
-      setData(last)
-      clearLastBreachResult()
-    } else {
-      setData(null)
+    if (params.content) {
+      setData({
+        risk: params.risk as string,
+        score: parseInt(params.score as string) || 0,
+        reason: params.reason as string,
+        content: params.content as string,
+      })
+    } else if (!data) {
+      const last = getLastBreachResult()
+      if (last) {
+        setData(last)
+        clearLastBreachResult()
+      }
     }
-  }, [])
+  }, [params.content, params.id])
 
   const maskContent = (c?: string) => {
     if (!c) return ''

@@ -1,5 +1,7 @@
+import { useAuth } from '@/services/auth/authContext';
 import { analyzeQrCode, extractQrCodeFromImage } from '@/services/calls/gemini';
 import { safeBrowsingCheck } from '@/services/calls/safeBrowsing';
+import { recordScan } from '@/services/scanHistory';
 import { setLastQrResult } from '@/services/storage/qrStore';
 import { validateAndNormalizeUrl } from '@/services/utils/urlValidator';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,16 +29,18 @@ export default function QRScanner() {
   const [cameraActive, setCameraActive] = useState(false);
   const [manualUrl, setManualUrl] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  
+
   // FIX: Use refs to track lifecycle and prevent multiple triggers
   const isMounted = useRef(true);
   const isProcessingScan = useRef(false);
   const isAnalyzing = useRef(false); // Prevent multiple simultaneous API calls
   const cameraRef = useRef<CameraView>(null);
   const router = useRouter();
+  const { user } = useAuth();
 
   useEffect(() => {
     isMounted.current = true;
+    // Alert.alert('Debug User', user ? `Logged in: ${user.id}` : 'No User Found');
     if (!permission?.granted) {
       requestPermission();
     }
@@ -55,7 +59,7 @@ export default function QRScanner() {
 
     // Comprehensive URL validation
     const validation = validateAndNormalizeUrl(url);
-    
+
     if (!validation.isValid) {
       Alert.alert(
         'Invalid URL',
@@ -71,12 +75,12 @@ export default function QRScanner() {
       isAnalyzing.current = true;
       setLoading(true);
       setLoadingMessage('Validating URL...');
-      
+
       // Small delay to show validation message
       await new Promise(resolve => setTimeout(resolve, 300));
-      
+
       setLoadingMessage('Checking Google Safe Browsing database...');
-      
+
       // Run both checks in parallel for better performance
       const [safeBrowsingResult, geminiResult] = await Promise.allSettled([
         (async () => {
@@ -88,14 +92,14 @@ export default function QRScanner() {
           return await analyzeQrCode(validatedUrl);
         })()
       ]);
-      
+
       setLoadingMessage('Combining results...');
 
       // Check Safe Browsing results
       let hasThreats = false;
       let threatDetails = '';
       let safeBrowsingSkipped = false;
-      
+
       if (safeBrowsingResult.status === 'fulfilled') {
         const sbData = safeBrowsingResult.value;
         if (sbData === null) {
@@ -103,7 +107,7 @@ export default function QRScanner() {
           safeBrowsingSkipped = true;
         } else if (sbData.matches && sbData.matches.length > 0) {
           hasThreats = true;
-          const threats = sbData.matches.map((match: any) => 
+          const threats = sbData.matches.map((match: any) =>
             `${match.threatType} (${match.platformType})`
           ).join(', ');
           threatDetails = `Google Safe Browsing detected: ${threats}. `;
@@ -128,7 +132,7 @@ export default function QRScanner() {
       // Combine results: Safe Browsing threats override Gemini analysis
       if (hasThreats) {
         finalRisk = 'HIGH';
-        finalScore = Math.max(finalScore, 90); // Ensure high score if threats found
+        finalScore = Math.min(finalScore, 10); // Ensure low safety score if threats found
         finalReason = threatDetails + finalReason;
       }
 
@@ -178,11 +182,18 @@ export default function QRScanner() {
       };
 
       setLastQrResult(result);
-      
+
+      // Record scan in history
+      if (user) {
+        // Map risk to status
+        const status = finalRisk === 'HIGH' ? 'Dangerous' : finalRisk === 'MEDIUM' ? 'Suspicious' : 'Safe';
+        recordScan(user.id, 'QR', status, `${validatedUrl.substring(0, 30)}...`, result);
+      }
+
       // Small delay before navigation to show completion
       setLoadingMessage('Analysis complete!');
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       router.push('/pages/qr_scanner/scan_result');
     } catch (error) {
       console.error('Analysis error:', error);
@@ -200,20 +211,30 @@ export default function QRScanner() {
   const handleBarcodeScanned = async ({ data }: { data: string }) => {
     // FIX: Comprehensive check to prevent multiple fires and ensure camera is active
     if (!cameraActive || isProcessingScan.current) return;
-    
+
     isProcessingScan.current = true;
     setCameraActive(false); // FIX: Immediately disable camera view
-    
+
+
+
     // Validate the scanned QR code data
     const validation = validateAndNormalizeUrl(data);
-    
+
     if (validation.isValid) {
       // Valid URL - set normalized version
       setManualUrl(validation.normalizedUrl!);
+
+      // Auto analyze
+      safeBrowsingApi(validation.normalizedUrl!);
     } else {
       // Not a valid URL, but still show the raw data so user can edit it
       setManualUrl(data);
-      
+
+      // Record as Safe/Unknown since it's just text
+      if (user) {
+        recordScan(user.id, 'QR', 'Safe', data.substring(0, 30));
+      }
+
       // Show validation error but don't block the user
       Alert.alert(
         'QR Code Scanned',
@@ -228,7 +249,7 @@ export default function QRScanner() {
     }, 1000);
   };
 
-  
+
 
   const handleCopyToClipboard = async () => {
     if (manualUrl) {
@@ -270,10 +291,10 @@ export default function QRScanner() {
       isAnalyzing.current = true;
       setLoading(true);
       setLoadingMessage('Processing image...');
-      
+
       // Use base64 if available, otherwise use URI
-      const imageData = base64Data 
-        ? `data:image/jpeg;base64,${base64Data}` 
+      const imageData = base64Data
+        ? `data:image/jpeg;base64,${base64Data}`
         : imageUri;
 
       setLoadingMessage('Extracting QR code from image...');
@@ -295,17 +316,17 @@ export default function QRScanner() {
 
       // Validate the extracted QR code data
       const qrValidation = validateAndNormalizeUrl(qrData);
-      
+
       if (!qrValidation.isValid) {
         // QR code found but not a valid URL - still show it to user
         setManualUrl(qrData);
-        
+
         if (isMounted.current) {
           setLoading(false);
           setLoadingMessage('Analyzing URL Safety...');
         }
         isAnalyzing.current = false;
-        
+
         Alert.alert(
           'QR Code Detected (Not a URL)',
           `Found QR code content: ${qrData.substring(0, 50)}${qrData.length > 50 ? '...' : ''}\n\n${qrValidation.error || 'This QR code does not contain a valid URL.'}\n\nYou can edit it manually if needed.`,
@@ -316,7 +337,7 @@ export default function QRScanner() {
 
       // Valid URL found - set it in the input field
       setManualUrl(qrValidation.normalizedUrl!);
-      
+
       if (isMounted.current) {
         setLoading(false);
       }
@@ -396,30 +417,30 @@ export default function QRScanner() {
           }}
           // FIX: Only pass handler if camera is logically active
           onBarcodeScanned={cameraActive ? handleBarcodeScanned : undefined}
-        >
-          <View style={styles.cameraOverlay}>
-            <View style={styles.cornerTopLeft} />
-            <View style={styles.cornerTopRight} />
-            <View style={styles.cornerBottomLeft} />
-            <View style={styles.cornerBottomRight} />
+        />
+        <View style={styles.cameraOverlay}>
+          <View style={styles.cornerTopLeft} />
+          <View style={styles.cornerTopRight} />
+          <View style={styles.cornerBottomLeft} />
+          <View style={styles.cornerBottomRight} />
 
-            <Ionicons
-              name="camera-outline"
-              size={50}
-              color="#999"
-              style={styles.cameraIcon}
-            />
-            <Text style={styles.cameraText}>Point camera at a QR code</Text>
+          <Ionicons
+            name="camera-outline"
+            size={50}
+            color="#999"
+            style={styles.cameraIcon}
+          />
+          <Text style={styles.cameraText}>Point camera at a QR code</Text>
 
-            <TouchableOpacity
-              style={styles.closeCameraButton}
-              onPress={() => setCameraActive(false)}
-            >
-              <Ionicons name="close" size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
-        </CameraView>
-      </View>
+          <TouchableOpacity
+            style={styles.closeCameraButton}
+            onPress={() => setCameraActive(false)}
+          >
+            <Ionicons name="close" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
+
+      </View >
     );
   }
 
@@ -543,11 +564,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cameraOverlay: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
   },
   cornerTopLeft: {
     position: 'absolute',
