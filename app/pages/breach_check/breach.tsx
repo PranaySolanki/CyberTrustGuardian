@@ -86,6 +86,7 @@ function BreachScanHeader({ activeTab, setActiveTab, text, setText, emailValid, 
               secureTextEntry={!showPassword}
               autoCapitalize={'none'}
               textContentType={'password'}
+              placeholderTextColor={'#53647bff'}
             />
             <TouchableOpacity style={styles.eyeButton} onPress={() => setShowPassword(!showPassword)} accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}>
               <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={22} color={'#475569'} />
@@ -101,6 +102,7 @@ function BreachScanHeader({ activeTab, setActiveTab, text, setText, emailValid, 
             secureTextEntry={false}
             autoCapitalize={'none'}
             textContentType={'emailAddress'}
+            placeholderTextColor={'#53647bff'}
           />
         )}
 
@@ -400,6 +402,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: '#E6EEF8',
+    color: '#000000',
     marginBottom: 8,
   },
   helperText: { color: '#475569', fontSize: 12, marginBottom: 8 },
