@@ -1,5 +1,11 @@
 {
   "expo": {
+    "updates": {
+      "url": "https://u.expo.dev/81a3840c-5b15-4e43-a19a-24cb40846b14"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "name": "CyberGuardian",
     "slug": "CyberGuardian",
     "version": "1.0.0",
