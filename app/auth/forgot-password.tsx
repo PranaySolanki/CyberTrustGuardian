@@ -1,16 +1,17 @@
 import { useAuth } from '@/services/auth/authContext';
 import { validateEmail } from '@/services/auth/validation';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 export default function ForgotPassword() {
@@ -60,7 +61,11 @@ export default function ForgotPassword() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.headerSection}>
-        <Text style={styles.logo}>🔐</Text>
+        <Image
+          source={require('../../assets/images/logo.png')}
+          style={{ width: 80, height: 80, marginBottom: 16 }}
+          resizeMode="contain"
+        />
         <Text style={styles.title}>Reset Password</Text>
         <Text style={styles.subtitle}>
           Enter your email address and we'll send you a link to reset your password

@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import React from 'react';
 import {
@@ -5,7 +6,6 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,7 +16,11 @@ export default function AuthIndex() {
       <ScrollView contentContainerStyle={styles.container}>
         {/* Logo Section */}
         <View style={styles.heroSection}>
-          <Text style={styles.heroBadge}>🛡️</Text>
+          <Image
+            source={require('../../assets/images/logo.png')}
+            style={{ width: 100, height: 100, marginBottom: 20 }}
+            resizeMode="contain"
+          />
           <Text style={styles.heroTitle}>CyberTrust Guardian</Text>
           <Text style={styles.heroSubtitle}>Protect Yourself from Digital Threats</Text>
         </View>

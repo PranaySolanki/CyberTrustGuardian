@@ -6,6 +6,7 @@ import {
   validatePasswordMatch,
   validateSignUpForm,
 } from '@/services/auth/validation';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -98,7 +99,11 @@ export default function SignUp() {
       >
         <ScrollView contentContainerStyle={styles.container}>
           <View style={styles.headerSection}>
-            <Text style={styles.logo}>🛡️</Text>
+            <Image
+              source={require('../../assets/images/logo.png')}
+              style={{ width: 80, height: 80, marginBottom: 16 }}
+              resizeMode="contain"
+            />
             <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>Join CyberGuardian to protect yourself online</Text>
           </View>
@@ -438,7 +443,7 @@ const styles = StyleSheet.create({
   signInContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom : 35,
+    marginBottom: 35,
     alignItems: 'center',
   },
   signInText: {

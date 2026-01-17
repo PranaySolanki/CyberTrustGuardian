@@ -1,6 +1,7 @@
 import { useAuth } from "@/services/auth/authContext";
 import { db } from "@/services/firebase/firebase";
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { Link, Redirect, router } from "expo-router";
 import { collection, doc, limit, onSnapshot, orderBy, query } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
@@ -141,7 +142,11 @@ export default function Index() {
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.headerRow}>
           <View style={styles.appBadge}>
-            <Text style={styles.appBadgeEmoji}>🛡️</Text>
+            <Image
+              source={require('../assets/images/logo.png')}
+              style={{ width: 40, height: 40, borderRadius: 10 }}
+              resizeMode="contain"
+            />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.appTitle}>CyberTrust</Text>

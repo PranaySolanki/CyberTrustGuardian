@@ -1,5 +1,6 @@
 import { useAuth } from '@/services/auth/authContext';
 import { validateSignInForm } from '@/services/auth/validation';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -75,7 +76,11 @@ export default function SignIn() {
       >
         <ScrollView contentContainerStyle={styles.container}>
           <View style={styles.headerSection}>
-            <Text style={styles.logo}>🛡️</Text>
+            <Image
+              source={require('../../assets/images/logo.png')}
+              style={{ width: 80, height: 80, marginBottom: 16 }}
+              resizeMode="contain"
+            />
             <Text style={styles.title}>Sign In</Text>
             <Text style={styles.subtitle}>Welcome back to CyberGuardian</Text>
           </View>
