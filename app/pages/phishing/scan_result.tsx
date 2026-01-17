@@ -5,7 +5,14 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-nati
 
 export default function PhishingScanResult() {
   const params = useLocalSearchParams()
-  const [data, setData] = useState<{ risk?: string; score?: number; reason?: string; content?: string } | null>(null)
+  const [data, setData] = useState<{
+    risk?: string;
+    score?: number;
+    reason?: string;
+    content?: string;
+    safeBrowsingResult?: string;
+    geminiResult?: string;
+  } | null>(null)
 
   useEffect(() => {
     if (params.content) {
@@ -35,7 +42,7 @@ export default function PhishingScanResult() {
     )
   }
 
-  const { risk, score, reason, content } = data
+  const { risk, score, reason, content, safeBrowsingResult, geminiResult } = data
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -50,8 +57,15 @@ export default function PhishingScanResult() {
         <Text style={styles.label}>Safety Score:</Text>
         <Text style={styles.value}>{score}%</Text>
 
+        {safeBrowsingResult && (
+          <>
+            <Text style={styles.label}>Google Safe Browsing:</Text>
+            <Text style={styles.reasonText}>{safeBrowsingResult}</Text>
+          </>
+        )}
+
         <Text style={styles.label}>AI Analysis Reason:</Text>
-        <Text style={styles.reasonText}>{reason}</Text>
+        <Text style={styles.reasonText}>{geminiResult || reason}</Text>
 
         <Text style={styles.label}>Original Content:</Text>
         <Text style={styles.contentPreview} numberOfLines={3}>{content}</Text>

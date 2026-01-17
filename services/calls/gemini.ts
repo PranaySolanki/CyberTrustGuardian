@@ -45,7 +45,7 @@ const schema: Schema = {
 
 // Now pass it to the model
 const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash-lite",
+    model: "gemini-2.5-flash",
     generationConfig: {
         responseMimeType: "application/json",
         responseSchema: schema,
@@ -54,7 +54,7 @@ const model = genAI.getGenerativeModel({
 
 // Vision model for image analysis (no schema needed for QR extraction)
 const visionModel = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash-lite",
+    model: "gemini-2.5-flash",
 });
 
 

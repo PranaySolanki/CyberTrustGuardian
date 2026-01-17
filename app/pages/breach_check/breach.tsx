@@ -1,9 +1,12 @@
 import { useAuth } from '@/services/auth/authContext'
 import { breachCheck } from '@/services/calls/breach'
+import { db } from '@/services/firebase/firebase'
 import { setLastBreachResult } from '@/services/storage/breachStore'
 import { recordScan } from '@/services/storage/scanHistory'
+import { seedBreachData } from '@/services/utils/seedBreaches'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
+import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore'
 import React, { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
@@ -28,22 +31,8 @@ type Scan = {
   score: number // 0-100
 }
 
-const initialScans: Scan[] = [
-  {
-    id: '1',
-    title: 'email@example.com found in 3 breaches',
-    time: '16:32',
-    risk: 'HIGH',
-    score: 94,
-  },
-  {
-    id: '2',
-    title: 'Password exposed on paste site',
-    time: '15:05',
-    risk: 'MEDIUM',
-    score: 55,
-  },
-]
+// Initial state for scans is empty
+const initialScans: any[] = []
 
 type BreachHeaderProps = {
   activeTab: Tab
@@ -145,9 +134,63 @@ export default function Breach() {
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<Tab>('Email Check')
   const [text, setText] = useState('')
-  const [scans, setScans] = useState<Scan[]>(initialScans)
+  const [scans, setScans] = useState<any[]>(initialScans)
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+
+
+  useEffect(() => {
+    seedBreachData();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    // Listen to History (Fetch recent and filter client-side to avoid index issues)
+    const historyRef = collection(db, 'users', user.id, 'history');
+    const q = query(
+      historyRef,
+      orderBy('timestamp', 'desc'),
+      limit(20)
+    );
+
+    const unsub = onSnapshot(q, (snapshot) => {
+      const historyItems = snapshot.docs
+        .map(d => ({
+          id: d.id,
+          ...d.data(),
+          // Format timestamp for display
+          time: d.data().timestamp?.toDate
+            ? d.data().timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : 'Just now'
+        }))
+        .filter((s: any) => s.type === 'Breach');
+      setScans(historyItems);
+    });
+
+    return () => unsub();
+  }, [user]);
+
+  const handleRecentPress = (scan: any) => {
+    // Navigate based on type
+    let pathname = "" as any;
+    if (scan.type === "Breach") {
+      pathname = "/pages/breach_check/breach_result";
+    } else if (scan.type === "Email") {
+      pathname = "/pages/phishing/scan_result";
+    }
+
+    if (pathname) {
+      const params = { ...scan };
+      if (scan.timestamp?.toDate) {
+        params.timestamp = scan.timestamp.toDate().toISOString();
+      }
+      router.push({
+        pathname,
+        params
+      });
+    }
+  };
 
 
   useEffect(() => {
@@ -209,7 +252,7 @@ export default function Breach() {
             score,
             reason,
             content: text.trim(),
-            type: 'Email'
+            breachType: 'Email'
           });
         }
 
@@ -250,7 +293,7 @@ export default function Breach() {
           score,
           reason,
           content: 'Password (hidden for security)',
-          type: 'Password'
+          breachType: 'Password'
         });
       }
 
@@ -275,19 +318,19 @@ export default function Breach() {
 
 
 
-  const ScanHistory = ({ item }: { item: Scan }) => {
+  const ScanHistory = ({ item }: { item: any }) => {
     const riskColor = item.risk === 'HIGH' ? '#FF4D4F' : item.risk === 'MEDIUM' ? '#FFA940' : '#2ECC71'
     return (
-      <View style={styles.scanItem}>
+      <TouchableOpacity style={styles.scanItem} onPress={() => handleRecentPress(item)}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.scanTitle}>{item.title}</Text>
+          <Text style={styles.scanTitle} numberOfLines={1}>{item.details || item.reason || 'Breach Check'}</Text>
           <Text style={styles.scanTime}>{item.time}</Text>
         </View>
         <View style={styles.scanMeta}>
           <Text style={[styles.riskBadge, { borderColor: riskColor, color: riskColor }]}>{item.risk}</Text>
           <Text style={[styles.score, { color: riskColor }]}>{item.score}%</Text>
         </View>
-      </View>
+      </TouchableOpacity>
     )
   }
 
