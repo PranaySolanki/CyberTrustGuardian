@@ -1,6 +1,7 @@
 import { useAuth } from "@/services/auth/authContext";
 import { analyzeAppSafety } from "@/services/calls/gemini";
 import { setLastAppResult } from "@/services/storage/appStore";
+import { recordScan } from "@/services/storage/scanHistory";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { useRouter } from "expo-router";
@@ -40,21 +41,21 @@ export default function AppDetection() {
   const [isScanning, setIsScanning] = useState(false);
   const router = useRouter();
 
-  const handleScan = () => {
-    // Mock data for "Flashlight Pro" to demonstrate high risk
+  const handleScan = (item: AppItem) => {
+    // Mock data based on the selected app
     const mockData = {
-      package_name: "com.super.flashlight.pro.free",
+      package_name: `com.${item.name.toLowerCase().replace(/\s+/g, '.')}`,
       permissions: [
         "android.permission.CAMERA",
         "android.permission.READ_CONTACTS",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.INTERNET"
       ],
-      appName: "Flashlight Pro",
+      appName: item.name,
       analysis: {
         risk: "HIGH",
         score: 12,
-        reason: "Excessive permissions detected: Contacts and Location are irrelevant for a flashlight app. Likely spyware.",
+        reason: `Excessive permissions detected: This ${item.name} version is requesting contacts and location data which is suspicious for its category.`,
         official_comparison: "Unknown App"
       }
     };
@@ -62,6 +63,17 @@ export default function AppDetection() {
     // Store in global state
     // @ts-ignore
     setLastAppResult(mockData);
+
+    // Record scan in history and update dashboard stats
+    if (user) {
+      recordScan(
+        user.id,
+        'App',
+        mockData.analysis.risk === 'HIGH' ? 'Dangerous' : 'Safe',
+        mockData.appName,
+        mockData
+      );
+    }
 
     router.push("/pages/app_detection/scan_result");
   };
@@ -158,7 +170,19 @@ export default function AppDetection() {
         analysis: analysis // The Gemini result
       });
 
-      
+      // Record scan in history and update dashboard stats
+      if (user) {
+        const risk = analysis.risk || 'LOW';
+        const status = risk === 'HIGH' ? 'Dangerous' : risk === 'MEDIUM' ? 'Suspicious' : 'Safe';
+        recordScan(
+          user.id,
+          'App',
+          status,
+          appName,
+          { ...analysisResult, appName, analysis }
+        );
+      }
+
       // Navigate to result
       router.push("/pages/app_detection/scan_result");
 
@@ -179,7 +203,7 @@ export default function AppDetection() {
           </View>
           <Text style={styles.appName}>{item.name}</Text>
         </View>
-        <TouchableOpacity style={styles.scanBtn} onPress={handleScan}>
+        <TouchableOpacity style={styles.scanBtn} onPress={() => handleScan(item)}>
           <Text style={styles.scanText}>Scan</Text>
         </TouchableOpacity>
       </View>

@@ -1,3 +1,5 @@
+import { useAuth } from '@/services/auth/authContext';
+import { recordScan } from '@/services/storage/scanHistory';
 import { Ionicons } from '@expo/vector-icons';
 import * as Device from 'expo-device';
 import { useRouter } from 'expo-router';
@@ -9,7 +11,9 @@ import { useSecurity } from '../../../services/calls/SecurityContext';
 export default function DeviceHealth() {
   const router = useRouter();
   const { securityState } = useSecurity();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const reportedThisSession = React.useRef(false);
 
   // Local state for standard checks (Expo Device)
   const [localHealth, setLocalHealth] = useState({
@@ -36,6 +40,27 @@ export default function DeviceHealth() {
       isEmulator: emulator,
       hasTestKeys: hasTestKeys,
     });
+
+    // 4. Report to Safety Score if risk is found
+    const rootDetected = rooted || securityState.isRooted;
+    const emulatorDetected = emulator || securityState.isEmulator;
+    const tamperedDetected = hasTestKeys || securityState.isTampered;
+
+    if ((rootDetected || emulatorDetected || tamperedDetected) && !reportedThisSession.current && user) {
+      reportedThisSession.current = true;
+      const details = [
+        rootDetected ? 'Root Access' : '',
+        emulatorDetected ? 'Emulator' : '',
+        tamperedDetected ? 'System Tampering' : ''
+      ].filter(Boolean).join(', ');
+
+      recordScan(
+        user.id,
+        'System',
+        'Dangerous',
+        details
+      );
+    }
 
     // Artificial delay to allow context sync or just for UX
     setTimeout(() => {
