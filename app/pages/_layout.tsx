@@ -1,14 +1,16 @@
+import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/services/auth/authContext";
 import { Redirect, Stack } from "expo-router";
 import { ActivityIndicator, View } from "react-native";
 
 export default function PagesLayout() {
+    const { colors, isDarkMode } = useTheme();
     const { isSignedIn, isInitializing } = useAuth(); // renamed isLoading to isInitializing based on authContext usage elsewhere
 
     if (isInitializing) {
         return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" color="#2563EB" />
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+                <ActivityIndicator size="large" color={colors.accent} />
             </View>
         );
     }
@@ -18,7 +20,17 @@ export default function PagesLayout() {
     }
 
     return (
-        <Stack>
+        <Stack screenOptions={{
+            headerStyle: {
+                backgroundColor: colors.background,
+            },
+            headerTintColor: colors.textPrimary,
+            headerTitleStyle: {
+                fontWeight: '700',
+                color: colors.textPrimary,
+            },
+            headerShadowVisible: false,
+        }}>
             <Stack.Screen name="phishing/phishing" options={{ title: "Phishing Detector" }} />
             <Stack.Screen name="phishing/scan_result" options={{ title: "Scan Result" }} />
             <Stack.Screen name="qr_scanner/qr_scanner" options={{ title: "QR Code Detector" }} />

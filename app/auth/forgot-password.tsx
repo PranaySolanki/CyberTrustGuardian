@@ -1,20 +1,22 @@
+import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/services/auth/authContext';
 import { validateEmail } from '@/services/auth/validation';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 export default function ForgotPassword() {
   const { resetPassword, isLoading } = useAuth();
+  const { colors, isDarkMode } = useTheme();
   const [email, setEmail] = useState('');
   const [emailSent, setEmailSent] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{
@@ -43,7 +45,7 @@ export default function ForgotPassword() {
           [
             {
               text: 'Back to Sign In',
-              onPress: () => router.push('/(auth)/sign-in'),
+              onPress: () => router.push('/auth/sign-in'),
             },
           ]
         );
@@ -58,11 +60,11 @@ export default function ForgotPassword() {
   const isFormValid = email.trim() !== '';
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.headerSection}>
         <Text style={styles.logo}>🔐</Text>
-        <Text style={styles.title}>Reset Password</Text>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>Reset Password</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           Enter your email address and we'll send you a link to reset your password
         </Text>
       </View>
@@ -71,55 +73,55 @@ export default function ForgotPassword() {
         <View style={styles.formSection}>
           {/* Email Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email Address</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>Email Address</Text>
             <TextInput
-              style={[styles.input, fieldErrors.email && styles.inputError]}
+              style={[styles.input, fieldErrors.email && styles.inputError, { backgroundColor: colors.surface, color: colors.textPrimary, borderColor: colors.border }]}
               placeholder="Enter your email"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
               editable={!isLoading}
-              placeholderTextColor="#A0AEC0"
+              placeholderTextColor={colors.textSecondary}
             />
             {fieldErrors.email && (
-              <Text style={styles.errorText}>⚠️ {fieldErrors.email}</Text>
+              <Text style={[styles.errorText, { color: colors.danger }]}>⚠️ {fieldErrors.email}</Text>
             )}
           </View>
 
           {/* Reset Button */}
           <TouchableOpacity
-            style={[styles.resetButton, (!isFormValid || isLoading) && styles.buttonDisabled]}
+            style={[styles.resetButton, (!isFormValid || isLoading) && styles.buttonDisabled, { backgroundColor: colors.accent }]}
             onPress={handleResetPassword}
             disabled={!isFormValid || isLoading}
           >
             {isLoading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.background} />
             ) : (
-              <Text style={styles.resetButtonText}>Send Reset Link</Text>
+              <Text style={[styles.resetButtonText, { color: colors.background }]}>Send Reset Link</Text>
             )}
           </TouchableOpacity>
 
           {/* Back to Sign In */}
           <View style={styles.backContainer}>
-            <TouchableOpacity onPress={() => router.push('/(auth)/sign-in')} disabled={isLoading}>
-              <Text style={styles.backLink}>← Back to Sign In</Text>
+            <TouchableOpacity onPress={() => router.push('/auth/sign-in')} disabled={isLoading}>
+              <Text style={[styles.backLink, { color: colors.accent }]}>← Back to Sign In</Text>
             </TouchableOpacity>
           </View>
         </View>
       ) : (
         <View style={styles.successSection}>
-          <View style={styles.successIcon}>
-            <Text style={styles.successEmoji}>✓</Text>
+          <View style={[styles.successIcon, { backgroundColor: isDarkMode ? colors.surface : '#D1FAE5' }]}>
+            <Text style={[styles.successEmoji, { color: colors.success }]}>✓</Text>
           </View>
-          <Text style={styles.successTitle}>Check Your Email</Text>
-          <Text style={styles.successMessage}>
+          <Text style={[styles.successTitle, { color: colors.textPrimary }]}>Check Your Email</Text>
+          <Text style={[styles.successMessage, { color: colors.textSecondary }]}>
             We've sent a password reset link to {email}. Please check your email and follow the instructions.
           </Text>
 
-          <View style={styles.infoCard}>
-            <Text style={styles.infoTitle}>Didn't receive an email?</Text>
-            <Text style={styles.infoText}>
+          <View style={[styles.infoCard, { backgroundColor: isDarkMode ? colors.surface : '#EFF6FF', borderLeftColor: colors.accent }]}>
+            <Text style={[styles.infoTitle, { color: colors.accent }]}>Didn't receive an email?</Text>
+            <Text style={[styles.infoText, { color: colors.textSecondary }]}>
               • Check your spam or junk folder{'\n'}
               • Wait a few minutes and try again{'\n'}
               • Make sure you entered the correct email address
@@ -127,10 +129,10 @@ export default function ForgotPassword() {
           </View>
 
           <TouchableOpacity
-            style={styles.backToSignInButton}
-            onPress={() => router.push('/(auth)/sign-in')}
+            style={[styles.backToSignInButton, { backgroundColor: colors.accent }]}
+            onPress={() => router.push('/auth/sign-in')}
           >
-            <Text style={styles.backToSignInButtonText}>Back to Sign In</Text>
+            <Text style={[styles.backToSignInButtonText, { color: colors.background }]}>Back to Sign In</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -141,7 +143,6 @@ export default function ForgotPassword() {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    backgroundColor: '#F8FAFF',
     paddingBottom: 30,
   },
   headerSection: {
@@ -156,12 +157,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#1A202C',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    color: '#718096',
     textAlign: 'center',
     paddingHorizontal: 20,
     lineHeight: 20,
@@ -175,31 +174,24 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2D3748',
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#E2E8F0',
     borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,
-    backgroundColor: '#FFFFFF',
-    color: '#2D3748',
   },
   inputError: {
-    borderColor: '#DC2626',
-    backgroundColor: '#FEF2F2',
+    borderColor: '#FF7E5F',
   },
   errorText: {
-    color: '#DC2626',
     fontSize: 12,
     marginTop: 6,
     fontWeight: '500',
   },
   resetButton: {
-    backgroundColor: '#2563EB',
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',
@@ -209,7 +201,6 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   resetButtonText: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
   },
@@ -218,7 +209,6 @@ const styles = StyleSheet.create({
   },
   backLink: {
     fontSize: 14,
-    color: '#2563EB',
     fontWeight: '600',
   },
   successSection: {
@@ -229,33 +219,27 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#D1FAE5',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
   },
   successEmoji: {
     fontSize: 40,
-    color: '#059669',
   },
   successTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1A202C',
     marginBottom: 12,
   },
   successMessage: {
     fontSize: 14,
-    color: '#4A5568',
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 28,
   },
   infoCard: {
-    backgroundColor: '#EFF6FF',
     borderRadius: 8,
     borderLeftWidth: 4,
-    borderLeftColor: '#2563EB',
     paddingHorizontal: 14,
     paddingVertical: 14,
     marginBottom: 28,
@@ -264,16 +248,13 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#1E40AF',
     marginBottom: 8,
   },
   infoText: {
     fontSize: 12,
-    color: '#1E40AF',
     lineHeight: 20,
   },
   backToSignInButton: {
-    backgroundColor: '#2563EB',
     borderRadius: 8,
     paddingVertical: 14,
     paddingHorizontal: 24,
@@ -281,7 +262,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   backToSignInButtonText: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
   },

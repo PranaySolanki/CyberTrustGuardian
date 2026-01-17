@@ -1,15 +1,17 @@
+import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/services/auth/authContext";
 import { Redirect, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View } from "react-native";
 
 export default function AuthLayout() {
+  const { colors, isDarkMode } = useTheme();
   const { isSignedIn, isInitializing } = useAuth();
 
   if (isInitializing) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#2563EB" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
@@ -20,7 +22,17 @@ export default function AuthLayout() {
 
   return (
     <>
-      <Stack>
+      <Stack screenOptions={{
+        headerStyle: {
+          backgroundColor: colors.background,
+        },
+        headerTintColor: colors.accent,
+        headerTitleStyle: {
+          fontWeight: '700',
+          color: colors.textPrimary,
+        },
+        headerShadowVisible: false,
+      }}>
         <Stack.Screen
           name="index"
           options={{
@@ -33,7 +45,6 @@ export default function AuthLayout() {
           options={{
             title: 'Sign Up',
             headerBackTitle: 'Back',
-            headerTintColor: '#2563EB',
           }}
         />
         <Stack.Screen
@@ -41,7 +52,6 @@ export default function AuthLayout() {
           options={{
             title: 'Sign In',
             headerBackTitle: 'Back',
-            headerTintColor: '#2563EB',
           }}
         />
         <Stack.Screen
@@ -49,11 +59,10 @@ export default function AuthLayout() {
           options={{
             title: 'Forgot Password',
             headerBackTitle: 'Back',
-            headerTintColor: '#2563EB',
           }}
         />
       </Stack>
-      <StatusBar style="dark" />
+      <StatusBar style={isDarkMode ? "light" : "dark"} />
     </>
   );
 }

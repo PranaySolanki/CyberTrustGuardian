@@ -1,3 +1,4 @@
+import { useTheme } from '@/context/ThemeContext'
 import { useAuth } from '@/services/auth/authContext'
 import { breachCheck } from '@/services/calls/breach'
 import { db } from '@/services/firebase/firebase'
@@ -23,16 +24,6 @@ import {
 const { width } = Dimensions.get('window')
 
 type Tab = 'Email Check' | 'Password Check'
-type Scan = {
-  id: string
-  title: string
-  time: string
-  risk: 'LOW' | 'MEDIUM' | 'HIGH'
-  score: number // 0-100
-}
-
-// Initial state for scans is empty
-const initialScans: any[] = []
 
 type BreachHeaderProps = {
   activeTab: Tab
@@ -45,37 +36,50 @@ type BreachHeaderProps = {
   onAnalyze: () => void
   showPassword: boolean
   setShowPassword: (v: boolean) => void
+  colors: any
+  isDarkMode: boolean
 }
 
-function BreachScanHeader({ activeTab, setActiveTab, text, setText, emailValid, loading, scansLength, onAnalyze, showPassword, setShowPassword }: BreachHeaderProps) {
+function BreachScanHeader({ activeTab, setActiveTab, text, setText, emailValid, loading, scansLength, onAnalyze, showPassword, setShowPassword, colors, isDarkMode }: BreachHeaderProps) {
   const renderTab = (tab: Tab) => (
     <TouchableOpacity
       key={tab}
-      style={[styles.tab, activeTab === tab && styles.tabActive]}
+      style={[
+        styles.tab,
+        { backgroundColor: isDarkMode ? colors.surface : '#F2F4F8' },
+        activeTab === tab && { backgroundColor: colors.accent }
+      ]}
       onPress={() => setActiveTab(tab)}
     >
-      <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
+      <Text style={[
+        styles.tabText,
+        { color: colors.textSecondary },
+        activeTab === tab && { color: colors.background, fontWeight: '600' }
+      ]}>{tab}</Text>
     </TouchableOpacity>
   )
 
   return (
     <View style={styles.content}>
       <View style={styles.headerRow}>
-        <Text style={styles.headerTitle}>Breach Exposure Checker</Text>
-        <Text style={styles.headerAction}>⟳</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Breach Exposure Checker</Text>
+        <TouchableOpacity>
+          <Text style={[styles.headerAction, { color: colors.textSecondary }]}>⟳</Text>
+        </TouchableOpacity>
       </View>
-      <Text style={styles.headerSubtitle}>Check if your email or password appeared in known data breaches</Text>
+      <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Check if your email or password appeared in known data breaches</Text>
 
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.tabRow}>{(['Email Check', 'Password Check'] as Tab[]).map(renderTab)}</View>
 
-        <Text style={styles.label}>{activeTab === 'Email Check' ? 'Email Address' : 'Password'}</Text>
+        <Text style={[styles.label, { color: colors.textSecondary }]}>{activeTab === 'Email Check' ? 'Email Address' : 'Password'}</Text>
 
         {activeTab === 'Password Check' ? (
           <View style={styles.passwordWrapper}>
             <TextInput
-              style={[styles.textArea, { flex: 1, marginRight: 8 }]}
+              style={[styles.textArea, { flex: 1, marginRight: 8, backgroundColor: isDarkMode ? colors.background : '#F8FAFF', color: colors.textPrimary, borderColor: colors.border }]}
               placeholder={'Enter password (never stored)'}
+              placeholderTextColor={colors.textSecondary}
               value={text}
               onChangeText={setText}
               keyboardType={'default'}
@@ -83,14 +87,15 @@ function BreachScanHeader({ activeTab, setActiveTab, text, setText, emailValid, 
               autoCapitalize={'none'}
               textContentType={'password'}
             />
-            <TouchableOpacity style={styles.eyeButton} onPress={() => setShowPassword(!showPassword)} accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}>
-              <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={22} color={'#475569'} />
+            <TouchableOpacity style={[styles.eyeButton, { backgroundColor: isDarkMode ? colors.background : '#F8FAFF' }]} onPress={() => setShowPassword(!showPassword)}>
+              <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={22} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
         ) : (
           <TextInput
-            style={styles.textArea}
+            style={[styles.textArea, { backgroundColor: isDarkMode ? colors.background : '#F8FAFF', color: colors.textPrimary, borderColor: colors.border }]}
             placeholder={'Enter email address'}
+            placeholderTextColor={colors.textSecondary}
             value={text}
             onChangeText={setText}
             keyboardType={'email-address'}
@@ -101,29 +106,29 @@ function BreachScanHeader({ activeTab, setActiveTab, text, setText, emailValid, 
         )}
 
         {activeTab === 'Email Check' && text.trim() !== '' && !emailValid && (
-          <Text style={styles.errorText}>Please enter a valid email address.</Text>
+          <Text style={[styles.errorText, { color: colors.danger }]}>Please enter a valid email address.</Text>
         )}
         {activeTab === 'Password Check' && (
-          <Text style={styles.helperText}>Password is checked using k-anonymity. It is never sent or stored.</Text>
+          <Text style={[styles.helperText, { color: colors.textSecondary }]}>Password is checked using k-anonymity. It is never sent or stored.</Text>
         )}
 
-        <TouchableOpacity style={[styles.analyzeBtn, (loading || (activeTab === 'Email Check' && !emailValid)) && styles.analyzeBtnDisabled]} disabled={loading || (activeTab === 'Email Check' && !emailValid)} onPress={onAnalyze}>
-          <Text style={styles.analyzeBtnText}>{activeTab === 'Email Check' ? 'Check Email Exposure' : 'Check Password Exposure'}</Text>
+        <TouchableOpacity style={[styles.analyzeBtn, { backgroundColor: colors.accent }, (loading || (activeTab === 'Email Check' && !emailValid)) && styles.analyzeBtnDisabled]} disabled={loading || (activeTab === 'Email Check' && !emailValid)} onPress={onAnalyze}>
+          <Text style={[styles.analyzeBtnText, { color: colors.background }]}>{activeTab === 'Email Check' ? 'Check Email Exposure' : 'Check Password Exposure'}</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.tipsCard}>
-        <Text style={styles.tipsTitle}>🔐 Security Tips</Text>
-        <Text style={styles.tip}>• Use unique passwords for every site</Text>
-        <Text style={styles.tip}>• Enable 2FA wherever possible</Text>
-        <Text style={styles.tip}>• Change passwords after a breach</Text>
-        <Text style={styles.tip}>• Never reuse breached passwords</Text>
+      <View style={[styles.tipsCard, { backgroundColor: isDarkMode ? 'rgba(0, 242, 254, 0.1)' : '#E0ECFF', borderColor: colors.accent }]}>
+        <Text style={[styles.tipsTitle, { color: colors.accent }]}>🔐 Security Tips</Text>
+        <Text style={[styles.tip, { color: colors.textSecondary }]}>• Use unique passwords for every site</Text>
+        <Text style={[styles.tip, { color: colors.textSecondary }]}>• Enable 2FA wherever possible</Text>
+        <Text style={[styles.tip, { color: colors.textSecondary }]}>• Change passwords after a breach</Text>
+        <Text style={[styles.tip, { color: colors.textSecondary }]}>• Never reuse breached passwords</Text>
       </View>
 
       <View style={styles.recent}>
         <View style={styles.recentHeader}>
-          <Text style={styles.recentTitle}>Recent Checks</Text>
-          <Text style={styles.scanCount}>{scansLength} scans</Text>
+          <Text style={[styles.recentTitle, { color: colors.textPrimary }]}>Recent Checks</Text>
+          <Text style={[styles.scanCount, { color: colors.textSecondary }]}>{scansLength} scans</Text>
         </View>
       </View>
     </View>
@@ -131,10 +136,11 @@ function BreachScanHeader({ activeTab, setActiveTab, text, setText, emailValid, 
 }
 
 export default function Breach() {
+  const { colors, isDarkMode } = useTheme()
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<Tab>('Email Check')
   const [text, setText] = useState('')
-  const [scans, setScans] = useState<any[]>(initialScans)
+  const [scans, setScans] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
@@ -146,7 +152,6 @@ export default function Breach() {
   useEffect(() => {
     if (!user) return;
 
-    // Listen to History (Fetch recent and filter client-side to avoid index issues)
     const historyRef = collection(db, 'users', user.id, 'history');
     const q = query(
       historyRef,
@@ -159,7 +164,6 @@ export default function Breach() {
         .map(d => ({
           id: d.id,
           ...d.data(),
-          // Format timestamp for display
           time: d.data().timestamp?.toDate
             ? d.data().timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             : 'Just now'
@@ -172,12 +176,9 @@ export default function Breach() {
   }, [user]);
 
   const handleRecentPress = (scan: any) => {
-    // Navigate based on type
     let pathname = "" as any;
     if (scan.type === "Breach") {
       pathname = "/pages/breach_check/breach_result";
-    } else if (scan.type === "Email") {
-      pathname = "/pages/phishing/scan_result";
     }
 
     if (pathname) {
@@ -199,22 +200,18 @@ export default function Breach() {
 
 
 
-  // Simple email validation (must contain '@' and '.')
   const emailValid = activeTab === 'Email Check' ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text.trim()) : true
 
-  // Handle text changes (previous simple behavior)
   const handleTextChange = (s: string) => {
     setText(s)
   }
 
   const analyze = async () => {
     if (!text.trim()) {
-      const emptyInputAlert = 'Please enter some content to analyze.'
-      alert(emptyInputAlert)
+      alert('Please enter some content to analyze.')
       return
     }
 
-    // If checking email, ensure it looks valid
     if (activeTab === 'Email Check' && !emailValid) {
       alert('Please enter a valid email address.')
       return
@@ -241,10 +238,8 @@ export default function Breach() {
         }
         const reason = breachesCount === 0 ? 'No breaches found for this email.' : `Found in ${breachesCount} breach(es): ${res.breaches.slice(0, 3).map(b => b.Name).join(', ')}`
 
-        // Store result in memory (avoid sending sensitive data as URL params)
         setLastBreachResult({ risk, score, reason, content: text.trim() })
 
-        // Record scan
         if (user) {
           const status = risk === 'HIGH' ? 'Dangerous' : risk === 'MEDIUM' ? 'Suspicious' : 'Safe';
           recordScan(user.id, 'Breach', status, `Email: ${text.trim()}`, {
@@ -261,7 +256,6 @@ export default function Breach() {
         return
       }
 
-      // Password check
       const res = await breachCheck(text, 'PASSWORD')
       setLoading(false)
       const count = res.count
@@ -282,10 +276,8 @@ export default function Breach() {
       }
       const reason = count === 0 ? 'Password not found in Pwned Passwords.' : `Found ${count} times in Pwned Passwords.`
 
-      // Store result in memory (avoid sending sensitive data as URL params)
       setLastBreachResult({ risk, score, reason, content: 'Password (hidden for security)' })
 
-      // Record scan
       if (user) {
         const status = risk === 'HIGH' ? 'Dangerous' : risk === 'MEDIUM' ? 'Suspicious' : 'Safe';
         recordScan(user.id, 'Breach', status, 'Password Check', {
@@ -306,25 +298,13 @@ export default function Breach() {
     }
   }
 
-  const renderTab = (tab: Tab) => (
-    <TouchableOpacity
-      key={tab}
-      style={[styles.tab, activeTab === tab && styles.tabActive]}
-      onPress={() => setActiveTab(tab)}
-    >
-      <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
-    </TouchableOpacity>
-  )
-
-
-
   const ScanHistory = ({ item }: { item: any }) => {
-    const riskColor = item.risk === 'HIGH' ? '#FF4D4F' : item.risk === 'MEDIUM' ? '#FFA940' : '#2ECC71'
+    const riskColor = item.risk === 'HIGH' ? colors.danger : item.risk === 'MEDIUM' ? '#FFA940' : colors.success
     return (
-      <TouchableOpacity style={styles.scanItem} onPress={() => handleRecentPress(item)}>
+      <TouchableOpacity style={[styles.scanItem, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => handleRecentPress(item)}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.scanTitle} numberOfLines={1}>{item.details || item.reason || 'Breach Check'}</Text>
-          <Text style={styles.scanTime}>{item.time}</Text>
+          <Text style={[styles.scanTitle, { color: colors.textPrimary }]} numberOfLines={1}>{item.details || item.reason || 'Breach Check'}</Text>
+          <Text style={[styles.scanTime, { color: colors.textSecondary }]}>{item.time}</Text>
         </View>
         <View style={styles.scanMeta}>
           <Text style={[styles.riskBadge, { borderColor: riskColor, color: riskColor }]}>{item.risk}</Text>
@@ -335,12 +315,12 @@ export default function Breach() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
         data={scans}
         keyExtractor={(i) => i.id}
         renderItem={ScanHistory}
-        ListHeaderComponent={<BreachScanHeader activeTab={activeTab} setActiveTab={setActiveTab} text={text} setText={handleTextChange} emailValid={emailValid} loading={loading} scansLength={scans.length} onAnalyze={analyze} showPassword={showPassword} setShowPassword={setShowPassword} />}
+        ListHeaderComponent={<BreachScanHeader activeTab={activeTab} setActiveTab={setActiveTab} text={text} setText={handleTextChange} emailValid={emailValid} loading={loading} scansLength={scans.length} onAnalyze={analyze} showPassword={showPassword} setShowPassword={setShowPassword} colors={colors} isDarkMode={isDarkMode} />}
         keyboardShouldPersistTaps="handled"
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         contentContainerStyle={{ paddingBottom: 40 }}
@@ -348,9 +328,9 @@ export default function Breach() {
 
       <Modal transparent visible={loading} animationType="fade">
         <View style={styles.overlay}>
-          <View style={styles.loaderContainer}>
-            <ActivityIndicator size="large" color="#2563EB" />
-            <Text style={styles.loaderText}>Checking breach databases...</Text>
+          <View style={[styles.loaderContainer, { backgroundColor: colors.surface }]}>
+            <ActivityIndicator size="large" color={colors.accent} />
+            <Text style={[styles.loaderText, { color: colors.textPrimary }]}>Checking breach databases...</Text>
           </View>
         </View>
       </Modal>
@@ -359,74 +339,60 @@ export default function Breach() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F6F8FB' },
+  container: { flex: 1 },
   headerRow: { paddingHorizontal: 16, marginTop: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#0F172A' },
-  headerAction: { fontSize: 18, color: '#6B7280' },
-  headerSubtitle: { paddingHorizontal: 16, color: '#6B7280', marginTop: 4, marginBottom: 12 },
+  headerTitle: { fontSize: 20, fontWeight: '700' },
+  headerAction: { fontSize: 18 },
+  headerSubtitle: { paddingHorizontal: 16, marginTop: 4, marginBottom: 12 },
 
   content: { padding: 16 },
   card: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 14,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
+    borderWidth: 1,
   },
   tabRow: { flexDirection: 'row', marginBottom: 12, alignSelf: 'center' },
   tab: {
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 10,
-    backgroundColor: '#F2F4F8',
     marginRight: 8,
   },
-  tabActive: {
-    backgroundColor: '#2563EB',
-  },
-  tabText: { color: '#334155' },
-  tabTextActive: { color: '#fff', fontWeight: '600' },
+  tabText: { fontSize: 14 },
 
-  label: { marginBottom: 8, color: '#64748B', fontSize: 13 },
+  label: { marginBottom: 8, fontSize: 13 },
   textArea: {
     minHeight: 56,
     borderRadius: 10,
-    backgroundColor: '#F8FAFF',
     padding: 12,
     borderWidth: 1,
-    borderColor: '#E6EEF8',
     marginBottom: 8,
   },
-  helperText: { color: '#475569', fontSize: 12, marginBottom: 8 },
+  helperText: { fontSize: 12, marginBottom: 8 },
   analyzeBtn: {
-    backgroundColor: '#2563EB',
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: 'center',
   },
-  analyzeBtnText: { color: '#fff', fontWeight: '600' },
-  analyzeBtnDisabled: { backgroundColor: '#94A3B8' },
+  analyzeBtnText: { fontWeight: '600' },
+  analyzeBtnDisabled: { opacity: 0.6 },
 
   tipsCard: {
-    backgroundColor: '#c8dcfa',
     borderRadius: 12,
     padding: 14,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#E6EEF8',
   },
-  tipsTitle: { fontWeight: '700', marginBottom: 8, color: '#367cec' },
-  tip: { color: '#475569', marginBottom: 4, fontSize: 13 },
+  tipsTitle: { fontWeight: '700', marginBottom: 8 },
+  tip: { marginBottom: 4, fontSize: 13 },
 
   recent: { marginTop: 4 },
   recentHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, paddingHorizontal: 4 },
   recentTitle: { fontWeight: '700', fontSize: 16 },
-  scanCount: { color: '#64748B' },
+  scanCount: { fontSize: 13 },
 
   scanItem: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 12,
     marginLeft: 16,
@@ -434,38 +400,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     width: width - 32,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
+    borderWidth: 1,
   },
-  scanTitle: { fontWeight: '600', color: '#0F172A' },
-  scanTime: { color: '#94A3B8', marginTop: 4, fontSize: 12 },
+  scanTitle: { fontWeight: '600' },
+  scanTime: { marginTop: 4, fontSize: 12 },
   scanMeta: { alignItems: 'flex-end', marginLeft: 8 },
   riskBadge: { borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 16, fontSize: 12 },
   score: { marginTop: 6, fontWeight: '700' },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Dims the background
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   loaderContainer: {
-    backgroundColor: 'white',
     padding: 30,
     borderRadius: 15,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
   },
   loaderText: {
     marginTop: 15,
     fontSize: 16,
     fontWeight: '600',
-    color: '#1E293B',
   },
-  errorText: { color: '#FF4D4F', fontSize: 12, marginBottom: 8 },
+  errorText: { fontSize: 12, marginBottom: 8 },
   passwordWrapper: { flexDirection: 'row', alignItems: 'center' },
-  eyeButton: { padding: 8, backgroundColor: '#F8FAFF', borderRadius: 8 },
+  eyeButton: { padding: 8, borderRadius: 8 },
 })

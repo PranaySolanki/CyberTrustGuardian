@@ -1,6 +1,8 @@
+import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/services/auth/authContext";
 import { db } from "@/services/firebase/firebase";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from 'expo-linear-gradient';
 import { Link, Redirect, router } from "expo-router";
 import { collection, doc, limit, onSnapshot, orderBy, query } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
@@ -30,9 +32,20 @@ const formatTimeAgo = (date: any) => {
 export default function Index() {
   const { width } = useWindowDimensions();
   const { user, signOut, isSignedIn, isInitializing } = useAuth();
+  const { colors, toggleTheme, isDarkMode } = useTheme();
 
   const [stats, setStats] = useState({ scansToday: 0, threatsBlocked: 0, appsAnalyzed: 0, safetyScore: 100 });
   const [recentScans, setRecentScans] = useState<any[]>([]);
+  const [showGreeting, setShowGreeting] = useState(true);
+
+  useEffect(() => {
+    // Hide greeting after 15 seconds
+    const timer = setTimeout(() => {
+      setShowGreeting(false);
+    }, 15000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -116,160 +129,131 @@ export default function Index() {
   };
 
   return (
-    <View style={styles.safe}>
+    <View style={[styles.safe, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.headerRow}>
-          <View style={styles.appBadge}>
+          <View style={[styles.appBadge, { backgroundColor: isDarkMode ? colors.surface : '#e6f5ff' }]}>
             <Text style={styles.appBadgeEmoji}>🛡️</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.appTitle}>CyberTrust</Text>
-            <Text style={styles.appSubtitle}>Guardian</Text>
+            <Text style={[styles.appTitle, { color: colors.textPrimary }]}>CyberTrust</Text>
+            <Text style={[styles.appSubtitle, { color: colors.textSecondary }]}>Guardian</Text>
           </View>
           <TouchableOpacity style={styles.headerButton} onPress={handleSignOut}>
-            <Ionicons name="log-out-outline" size={24} color="#2563EB" />
+            <Ionicons name="log-out-outline" size={24} color={colors.accent} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.themeToggle}>
-            <Text style={{ fontSize: 28 }}>◐</Text>
+          <TouchableOpacity style={styles.themeToggle} onPress={toggleTheme}>
+            <Ionicons name={isDarkMode ? "sunny-outline" : "moon-outline"} size={22} color={colors.accent} />
           </TouchableOpacity>
         </View>
 
-        {user && (
-          <View style={styles.userCard}>
-            <Text style={styles.userGreeting}>Welcome back, {user.fullName}!</Text>
-            <Text style={styles.userEmail}>{user.email}</Text>
+        {user && showGreeting && (
+          <View style={[styles.userCard, { backgroundColor: isDarkMode ? colors.surface : "#EFF6FF", borderLeftColor: colors.accent }]}>
+            <Text style={[styles.userGreeting, { color: isDarkMode ? colors.textPrimary : "#1E40AF" }]}>Welcome back, {user.fullName}!</Text>
+            <Text style={[styles.userEmail, { color: isDarkMode ? colors.textSecondary : "#1E40AF" }]}>{user.email}</Text>
           </View>
         )}
 
-        <View style={styles.statusCard}>
+        <LinearGradient
+          colors={isDarkMode ? [colors.accent, colors.accentDesaturated] : ['#E2E8F0', '#CBD5E1']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.statusCard, !isDarkMode && { backgroundColor: '#E2E8F0' }]}
+        >
           <View style={styles.statusContent}>
-            <Text style={styles.statusTitle}>System Secure</Text>
-            <Text style={styles.statusSubtitle}>
-              Your device is protected. {stats.threatsBlocked} threats blocked.
+            <Text style={[styles.statusTitle, { color: isDarkMode ? colors.background : colors.textPrimary }]}>System Secure</Text>
+            <Text style={[styles.statusSubtitle, { color: isDarkMode ? colors.background : colors.textSecondary, opacity: 0.9 }]}>
+              Device is protected. {stats.threatsBlocked} threats blocked.
             </Text>
+            <View style={[
+              styles.integritySummary,
+              {
+                backgroundColor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.5)',
+                borderColor: isDarkMode ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.1)',
+                borderWidth: 1
+              }
+            ]}>
+              <Ionicons name="shield-checkmark" size={14} color={isDarkMode ? colors.background : colors.textPrimary} />
+              <Text style={[styles.integrityText, { color: isDarkMode ? colors.background : colors.textPrimary }]}>Device Integrity: Verified</Text>
+            </View>
           </View>
-          <View style={styles.riskPill}>
-            <Text style={styles.riskText} numberOfLines={1}>Low Risk</Text>
+          <View style={[styles.riskPill, { backgroundColor: isDarkMode ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.3)' }]}>
+            <Text style={[styles.riskText, { color: isDarkMode ? colors.background : colors.textPrimary }]} numberOfLines={1}>Low Risk</Text>
           </View>
-        </View>
+        </LinearGradient>
 
-        <Text style={styles.sectionTitle}>Today's Activity</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Today's Activity</Text>
 
         <View style={styles.activityGrid}>
-          <View style={styles.activityCard}>
-            <Text style={styles.activityIcon}>📈</Text>
-            <Text style={styles.activityNumber}>{stats.scansToday}</Text>
-            <Text style={styles.activityLabel}>Scans Today</Text>
-          </View>
-          <View style={styles.activityCard}>
-            <Text style={styles.activityIcon}>⚠️</Text>
-            <Text style={styles.activityNumber}>{stats.threatsBlocked}</Text>
-            <Text style={styles.activityLabel}>Threats Blocked</Text>
-          </View>
-          <View style={styles.activityCard}>
-            <Text style={styles.activityIcon}>🧾</Text>
-            <Text style={styles.activityNumber}>{stats.appsAnalyzed}</Text>
-            <Text style={styles.activityLabel}>Apps Analyzed</Text>
-          </View>
-          <View style={styles.activityCard}>
-            <Text style={styles.activityIcon}>✔️</Text>
-            <Text style={styles.activityNumber}>{stats.safetyScore}%</Text>
-            <Text style={styles.activityLabel}>Safety Score</Text>
-          </View>
+          {[
+            { label: 'Scans Today', value: stats.scansToday, emoji: '📈' },
+            { label: 'Threats Blocked', value: stats.threatsBlocked, emoji: '⚠️' },
+            { label: 'Apps Analyzed', value: stats.appsAnalyzed, emoji: '🧾' },
+            { label: 'Safety Score', value: `${stats.safetyScore}%`, emoji: '✔️' }
+          ].map((item, idx) => (
+            <View key={idx} style={[styles.activityCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={styles.activityIcon}>{item.emoji}</Text>
+              <Text style={[styles.activityNumber, { color: colors.textPrimary }]}>{item.value}</Text>
+              <Text style={[styles.activityLabel, { color: colors.textSecondary }]}>{item.label}</Text>
+            </View>
+          ))}
         </View>
 
-        <Text style={styles.sectionTitle}>Security Tools</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Security Tools</Text>
 
         <View style={styles.toolList}>
-          <Link href="/pages/phishing/phishing" style={{ textDecorationLine: "none" }}>
-            <View style={[styles.toolItem, { width: toolItemWidth, marginBottom: toolItemMarginBottom }]}>
-              <View style={[styles.toolIcon, { backgroundColor: "#ff6b6b" }]}>
-                <Text style={styles.toolIconEmoji}>✉️</Text>
+          {[
+            { href: '/pages/phishing/phishing', title: 'Phishing Detector', sub: 'Scan emails, SMS & links for threats', emoji: '✉️', color: colors.danger },
+            { href: '/pages/qr_scanner/qr_scanner', title: 'QR Safety Checker', sub: 'Verify QR codes before scanning', emoji: '📸', color: colors.accentDesaturated },
+            { href: '/pages/app_detection/app_detection', title: 'App Permissions', sub: 'Analyze installed app security', emoji: '🔒', color: colors.purple },
+            { href: '/pages/device_health/device_health', title: 'Device Integrity Check', sub: 'Root & emulator detection', emoji: '📱', color: colors.warning },
+            { href: '/pages/breach_check/breach', title: 'Breach Exposure Checker', sub: 'Check emails and passwords against breach databases', emoji: '🔐', color: '#ffd166' }
+          ].map((tool, idx) => (
+            <Link key={idx} href={tool.href as any} style={{ textDecorationLine: "none" }}>
+              <View style={[styles.toolItem, { width: toolItemWidth, marginBottom: toolItemMarginBottom, backgroundColor: colors.surface, borderColor: colors.border }]}>
+                {/* Replaced BlurView with a standard View for better compatibility until rebuild */}
+                <View style={[styles.toolIcon, { backgroundColor: isDarkMode ? tool.color + '33' : tool.color }]}>
+                  <Text style={[styles.toolIconEmoji, { fontSize: isDarkMode ? 32 : 40 }]}>{tool.emoji}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.toolTitle, { color: colors.textPrimary }]}>{tool.title}</Text>
+                  <Text style={[styles.toolSub, { color: colors.textSecondary }]}>{tool.sub}</Text>
+                </View>
+                <Text style={styles.chev}>›</Text>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.toolTitle}>Phishing Detector</Text>
-                <Text style={styles.toolSub}>Scan emails, SMS & links for threats</Text>
-              </View>
-              <Text style={styles.chev}>›</Text>
-            </View>
-          </Link>
-
-          <Link href="/pages/qr_scanner/qr_scanner" style={{ textDecorationLine: "none" }}>
-            <View style={[styles.toolItem, { width: toolItemWidth, marginBottom: toolItemMarginBottom }]}>
-              <View style={[styles.toolIcon, { backgroundColor: "#4d9cff" }]}>
-                <Text style={styles.toolIconEmoji}>📸</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.toolTitle}>QR Safety Checker</Text>
-                <Text style={styles.toolSub}>Verify QR codes before scanning</Text>
-              </View>
-              <Text style={styles.chev}>›</Text>
-            </View>
-          </Link>
-
-          <Link href="/pages/app_detection/app_detection" style={{ textDecorationLine: "none" }}>
-            <View style={[styles.toolItem, { width: toolItemWidth, marginBottom: toolItemMarginBottom }]}>
-              <View style={[styles.toolIcon, { backgroundColor: "#a77bff" }]}>
-                <Text style={styles.toolIconEmoji}>🔒</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.toolTitle}>App Permissions</Text>
-                <Text style={styles.toolSub}>Analyze installed app security</Text>
-              </View>
-              <Text style={styles.chev}>›</Text>
-            </View>
-          </Link>
-
-          <Link href="/pages/device_health/device_health" style={{ textDecorationLine: "none" }}>
-            <View style={styles.toolItem}>
-              <View style={[styles.toolIcon, { backgroundColor: "#FFB020" }]}>
-                <Text style={styles.toolIconEmoji}>📱</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.toolTitle}>Device Integrity Check</Text>
-                <Text style={styles.toolSub}>Root & emulator detection</Text>
-              </View>
-              <Text style={styles.chev}>›</Text>
-            </View>
-          </Link>
-
-          <Link href="/pages/breach_check/breach" style={{ textDecorationLine: "none" }}>
-            <View style={[styles.toolItem, { width: toolItemWidth, marginBottom: toolItemMarginBottom }]}>
-              <View style={[styles.toolIcon, { backgroundColor: "#ffd166" }]}>
-                <Text style={styles.toolIconEmoji}>🔐</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.toolTitle}>Breach Exposure Checker</Text>
-                <Text style={styles.toolSub}>Check emails and passwords against breach databases</Text>
-              </View>
-              <Text style={styles.chev}>›</Text>
-            </View>
-          </Link>
+            </Link>
+          ))}
         </View>
 
-        <View style={styles.tipCard}>
-          <Text style={styles.tipTitle}>🛡️ Security Tip</Text>
-          <Text style={styles.tipText}>
+        <View style={[styles.tipCard, { backgroundColor: isDarkMode ? colors.surfaceLighter : "#c8dcfa" }]}>
+          <Text style={[styles.tipTitle, { color: isDarkMode ? colors.accent : "#367cec" }]}>🛡️ Security Tip</Text>
+          <Text style={[styles.tipText, { color: colors.textPrimary }]}>
             Always verify sender email addresses before clicking links. Hover over links to preview the destination URL.
           </Text>
         </View>
 
-        <Text style={styles.sectionTitle}>Recent Scans</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Recent Scans</Text>
 
         <View style={styles.recentList}>
           {recentScans.length === 0 ? (
             <View style={{ padding: 20, alignItems: 'center' }}>
-              <Text style={{ color: '#9ca3af' }}>No recent activity</Text>
+              <Text style={{ color: colors.textSecondary }}>No recent activity</Text>
             </View>
           ) : (
             recentScans.map((scan) => (
-              <TouchableOpacity key={scan.id} style={styles.recentItem} onPress={() => handleRecentPress(scan)}>
+              <TouchableOpacity key={scan.id} style={[styles.recentItem, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => handleRecentPress(scan)}>
                 <View>
-                  <Text style={styles.recentLabel}>{scan.type || 'Unknown Scan'}</Text>
-                  <Text style={styles.recentTime}>{formatTimeAgo(scan.timestamp)}</Text>
+                  <Text style={[styles.recentLabel, { color: colors.textPrimary }]}>{scan.type || 'Unknown Scan'}</Text>
+                  <Text style={[styles.recentTime, { color: colors.textSecondary }]}>{formatTimeAgo(scan.timestamp)}</Text>
                 </View>
-                <View style={scan.status === 'Safe' ? styles.recentStatusSafe : styles.recentStatusSusp}>
-                  <Text style={[styles.recentStatusText, scan.status !== 'Safe' && { color: '#DC2626' }]}>
+                <View style={[
+                  scan.status === 'Safe' ? styles.recentStatusSafe : styles.recentStatusSusp,
+                  { backgroundColor: scan.status === 'Safe' ? (isDarkMode ? '#064e3b40' : '#e6f9ef') : (isDarkMode ? '#D6555540' : '#fff1f0') }
+                ]}>
+                  <Text style={[
+                    styles.recentStatusText,
+                    { color: scan.status === 'Safe' ? colors.success : colors.danger }
+                  ]}>
                     {scan.status || 'Unknown'}
                   </Text>
                 </View>
@@ -285,7 +269,7 @@ export default function Index() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#f7f9fa" },
   container: { padding: 16, paddingBottom: 40 },
-  headerRow: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
+  headerRow: { flexDirection: "row", alignItems: "center", marginBottom: 12, marginTop: 30 },
   appBadge: { width: 48, height: 48, borderRadius: 12, backgroundColor: "#e6f5ff", justifyContent: "center", alignItems: "center", marginRight: 12 },
   appBadgeEmoji: { fontSize: 20 },
   appTitle: { fontSize: 18, fontWeight: "700" },
@@ -300,12 +284,14 @@ const styles = StyleSheet.create({
 
   statusCard: { backgroundColor: "#0f9d58", borderRadius: 12, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16, paddingRight: 20, overflow: 'hidden' },
   statusTitle: { color: "#fff", fontSize: 18, fontWeight: "700" },
-  statusSubtitle: { marginTop: 7, color: "rgba(255,255,255,0.9)" },
+  statusSubtitle: { marginTop: 4, color: "rgba(255,255,255,0.9)", fontSize: 13 },
   statusContent: { flex: 1, marginRight: -60 },
+  integritySummary: { flexDirection: 'row', alignItems: 'center', marginTop: 8, backgroundColor: 'rgba(255,255,255,0.2)', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  integrityText: { color: '#fff', fontSize: 11, fontWeight: '700', marginLeft: 4 },
   riskPill: { backgroundColor: "rgba(255,255,255,0.2)", marginBottom: 42.5, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 50, alignSelf: "center", maxWidth: 110, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   riskText: { color: "#fff", fontWeight: "600", fontSize: 13 },
 
-  sectionTitle: { fontSize: 17, fontWeight: "700", marginLeft: 16, marginBottom: 8, marginTop: 4, color: "#272d3b" },
+  sectionTitle: { fontSize: 13, fontWeight: "800", marginLeft: 8, marginBottom: 12, marginTop: 20, textTransform: 'uppercase', letterSpacing: 1 },
 
   activityGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", marginBottom: 5 },
   activityCard: { width: "48%", height: 145, backgroundColor: "#fff", borderRadius: 12, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: "#f1f5f9" },

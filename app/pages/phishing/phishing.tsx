@@ -1,3 +1,4 @@
+import { useTheme } from '@/context/ThemeContext'
 import { useAuth } from '@/services/auth/authContext'
 import { analyzePhisingAttempt } from '@/services/calls/gemini'
 import { safeBrowsingCheck } from '@/services/calls/safeBrowsing'
@@ -23,16 +24,6 @@ import {
 const { width } = Dimensions.get('window')
 
 type Tab = 'Email' | 'SMS' | 'URL'
-type Scan = {
-  id: string
-  title: string
-  time: string
-  risk: 'LOW' | 'MEDIUM' | 'HIGH'
-  score: number // 0-100
-}
-
-// Initial state for scans is empty
-const initialScans: any[] = []
 
 type PhishingHeaderProps = {
   activeTab: Tab
@@ -45,57 +36,74 @@ type PhishingHeaderProps = {
 }
 
 function PhishingScanHeader({ activeTab, setActiveTab, text, setText, loading, onAnalyze, scansLength }: PhishingHeaderProps) {
+  const { colors, isDarkMode } = useTheme();
+
   const renderTab = (tab: Tab) => (
     <TouchableOpacity
       key={tab}
-      style={[styles.tab, activeTab === tab && styles.tabActive]}
+      style={[
+        styles.tab,
+        { backgroundColor: isDarkMode ? colors.surface : '#F2F4F8' },
+        activeTab === tab && { backgroundColor: colors.accent }
+      ]}
       onPress={() => setActiveTab(tab)}
     >
-      <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
+      <Text style={[
+        styles.tabText,
+        { color: isDarkMode ? colors.textSecondary : '#334155' },
+        activeTab === tab && { color: colors.background, fontWeight: '600' }
+      ]}>
+        {tab}
+      </Text>
     </TouchableOpacity>
   )
 
   return (
     <View style={styles.content}>
       <View style={styles.headerRow}>
-        <Text style={styles.headerTitle}>Phishing Detector</Text>
-        <Text style={styles.headerAction}>⟳</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Phishing Detector</Text>
+        <Text style={[styles.headerAction, { color: colors.textSecondary }]}>⟳</Text>
       </View>
-      <Text style={styles.headerSubtitle}>AI-powered threat analysis</Text>
+      <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>AI-powered threat analysis</Text>
 
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.tabRow}>
           {(['Email', 'SMS', 'URL'] as Tab[]).map(renderTab)}
         </View>
 
-        <Text style={styles.label}>Paste {activeTab} Content</Text>
+        <Text style={[styles.label, { color: colors.textSecondary }]}>Paste {activeTab} Content</Text>
         <TextInput
-          style={styles.textArea}
+          style={[styles.textArea, { backgroundColor: isDarkMode ? colors.background : '#F8FAFF', borderColor: colors.border, color: colors.textPrimary }]}
           multiline
           placeholder={`Paste ${activeTab} content here...`}
+          placeholderTextColor={colors.textSecondary}
           value={text}
           onChangeText={setText}
           numberOfLines={5}
           textAlignVertical="top"
         />
 
-        <TouchableOpacity style={styles.analyzeBtn} disabled={loading} onPress={onAnalyze}>
-          <Text style={styles.analyzeBtnText}>Analyze Content</Text>
+        <TouchableOpacity
+          style={[styles.analyzeBtn, { backgroundColor: colors.accent }, loading && styles.analyzeBtnDisabled]}
+          disabled={loading}
+          onPress={onAnalyze}
+        >
+          <Text style={[styles.analyzeBtnText, { color: colors.background }]}>Analyze Content</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.tipsCard}>
-        <Text style={styles.tipsTitle}>🛡️ Security Tips</Text>
-        <Text style={styles.tip}>• Never share passwords or sensitive info via email/SMS</Text>
-        <Text style={styles.tip}>• Verify sender identity through official channels</Text>
-        <Text style={styles.tip}>• Hover over links to check actual destination</Text>
-        <Text style={styles.tip}>• Be suspicious of urgent or threatening messages</Text>
+      <View style={[styles.tipsCard, { backgroundColor: isDarkMode ? 'rgba(0, 242, 254, 0.1)' : '#EFF6FF', borderColor: isDarkMode ? colors.accent : '#DBEAFE' }]}>
+        <Text style={[styles.tipsTitle, { color: colors.accent }]}>🛡️ Security Tips</Text>
+        <Text style={[styles.tip, { color: colors.textSecondary }]}>• Never share passwords or sensitive info via email/SMS</Text>
+        <Text style={[styles.tip, { color: colors.textSecondary }]}>• Verify sender identity through official channels</Text>
+        <Text style={[styles.tip, { color: colors.textSecondary }]}>• Hover over links to check actual destination</Text>
+        <Text style={[styles.tip, { color: colors.textSecondary }]}>• Be suspicious of urgent or threatening messages</Text>
       </View>
 
       <View style={styles.recent}>
         <View style={styles.recentHeader}>
-          <Text style={styles.recentTitle}>Recent Scans</Text>
-          <Text style={styles.scanCount}>{scansLength} scans</Text>
+          <Text style={[styles.recentTitle, { color: colors.textPrimary }]}>Recent Scans</Text>
+          <Text style={[styles.scanCount, { color: colors.textSecondary }]}>{scansLength} scans</Text>
         </View>
       </View>
     </View>
@@ -104,15 +112,16 @@ function PhishingScanHeader({ activeTab, setActiveTab, text, setText, loading, o
 
 export default function Phishing() {
   const { user } = useAuth();
+  const { colors, isDarkMode } = useTheme();
   const [activeTab, setActiveTab] = useState<Tab>('Email')
   const [text, setText] = useState('')
-  const [scans, setScans] = useState<any[]>(initialScans)
+  const [scans, setScans] = useState<any[]>([])
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!user) return;
 
-    // Listen to History (Fetch recent and filter client-side to avoid index issues)
+    // Listen to History
     const historyRef = collection(db, 'users', user.id, 'history');
     const q = query(
       historyRef,
@@ -125,7 +134,6 @@ export default function Phishing() {
         .map(d => ({
           id: d.id,
           ...d.data(),
-          // Format timestamp for display
           time: d.data().timestamp?.toDate
             ? d.data().timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             : 'Just now'
@@ -138,7 +146,6 @@ export default function Phishing() {
   }, [user]);
 
   const handleRecentPress = (scan: any) => {
-    // Navigate to scan_result with parameters
     const params = { ...scan };
     if (scan.timestamp?.toDate) {
       params.timestamp = scan.timestamp.toDate().toISOString();
@@ -151,8 +158,7 @@ export default function Phishing() {
 
   const analyze = async () => {
     if (!text.trim()) {
-      const emptyInputAlert = 'Please enter some content to analyze.'
-      alert(emptyInputAlert)
+      alert('Please enter some content to analyze.')
       return
     }
 
@@ -168,12 +174,10 @@ export default function Phishing() {
 
     setLoading(true);
     try {
-      // Run analysis
       let analysis: any;
       let sbResult: any = null;
 
       if (activeTab === 'URL') {
-        // Run both in parallel for URLs
         const [geminiRes, sbRes] = await Promise.allSettled([
           analyzePhisingAttempt(urlToAnalyze, 'URL'),
           safeBrowsingCheck(urlToAnalyze)
@@ -182,7 +186,6 @@ export default function Phishing() {
         if (geminiRes.status === 'fulfilled') {
           analysis = geminiRes.value;
         } else {
-          console.error('Gemini analysis failed:', geminiRes.reason);
           analysis = { risk: 'UNKNOWN', score: 0, reason: 'AI analysis unavailable.' };
         }
 
@@ -190,14 +193,12 @@ export default function Phishing() {
           sbResult = sbRes.value;
         }
       } else {
-        // Just Gemini for Email/SMS
         analysis = await analyzePhisingAttempt(text, activeTab.toUpperCase() as any);
       }
 
       setLoading(false);
       setText('');
 
-      // Combine Results if URL
       let finalRisk = analysis.risk;
       let finalScore = analysis.score;
       let finalReason = analysis.reason;
@@ -216,7 +217,6 @@ export default function Phishing() {
           safeBrowsingText = '✓ No threats detected';
         }
       } else {
-        // No Safe Browsing for Email/SMS
         safeBrowsingText = '';
       }
 
@@ -229,10 +229,8 @@ export default function Phishing() {
         geminiResult: analysis.reason
       };
 
-      // Store result in memory
       setLastPhishingResult(resultData);
 
-      // Record scan
       if (user) {
         const status = finalRisk === 'HIGH' ? 'Dangerous' : finalRisk === 'MEDIUM' ? 'Suspicious' : 'Safe';
         recordScan(user.id, activeTab === 'URL' ? 'URL' : activeTab === 'SMS' ? 'SMS' : 'Email', status, urlToAnalyze.slice(0, 30), resultData);
@@ -241,30 +239,20 @@ export default function Phishing() {
       router.push({ pathname: '/pages/phishing/scan_result' })
     } catch (error) {
       setLoading(false);
-      console.error('Analysis error:', error);
       alert('An error occurred during analysis. Please try again.');
     }
   }
 
-  const renderTab = (tab: Tab) => (
-    <TouchableOpacity
-      key={tab}
-      style={[styles.tab, activeTab === tab && styles.tabActive]}
-      onPress={() => setActiveTab(tab)}
-    >
-      <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
-    </TouchableOpacity>
-  )
-
-
-
   const ScanHistory = ({ item }: { item: any }) => {
-    const riskColor = item.risk === 'HIGH' ? '#FF4D4F' : item.risk === 'MEDIUM' ? '#FFA940' : '#2ECC71'
+    const riskColor = item.risk === 'HIGH' ? colors.danger : item.risk === 'MEDIUM' ? '#FFA940' : colors.success;
     return (
-      <TouchableOpacity style={styles.scanItem} onPress={() => handleRecentPress(item)}>
+      <TouchableOpacity
+        style={[styles.scanItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        onPress={() => handleRecentPress(item)}
+      >
         <View style={{ flex: 1 }}>
-          <Text style={styles.scanTitle} numberOfLines={1}>{item.details || item.content || 'Scan'}</Text>
-          <Text style={styles.scanTime}>{item.time}</Text>
+          <Text style={[styles.scanTitle, { color: colors.textPrimary }]} numberOfLines={1}>{item.details || item.content || 'Scan'}</Text>
+          <Text style={[styles.scanTime, { color: colors.textSecondary }]}>{item.time}</Text>
         </View>
         <View style={styles.scanMeta}>
           <Text style={[styles.riskBadge, { borderColor: riskColor, color: riskColor }]}>{item.risk}</Text>
@@ -274,10 +262,8 @@ export default function Phishing() {
     )
   }
 
-
-
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
         data={scans}
         keyExtractor={i => i.id}
@@ -288,12 +274,11 @@ export default function Phishing() {
         contentContainerStyle={{ paddingBottom: 40 }}
       />
 
-      {/* --- LOADING OVERLAY --- */}
       <Modal transparent visible={loading} animationType="fade">
         <View style={styles.overlay}>
-          <View style={styles.loaderContainer}>
-            <ActivityIndicator size="large" color="#2563EB" />
-            <Text style={styles.loaderText}>Analyzing with AI...</Text>
+          <View style={[styles.loaderContainer, { backgroundColor: colors.surface }]}>
+            <ActivityIndicator size="large" color={colors.accent} />
+            <Text style={[styles.loaderText, { color: colors.textPrimary }]}>Analyzing with AI...</Text>
           </View>
         </View>
       </Modal>
@@ -302,74 +287,60 @@ export default function Phishing() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F6F8FB' },
+  container: { flex: 1 },
   headerRow: { paddingHorizontal: 16, marginTop: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#0F172A' },
-  headerAction: { fontSize: 18, color: '#6B7280' },
-  headerSubtitle: { paddingHorizontal: 16, color: '#6B7280', marginTop: 4, marginBottom: 12 },
+  headerTitle: { fontSize: 20, fontWeight: '700' },
+  headerAction: { fontSize: 18 },
+  headerSubtitle: { paddingHorizontal: 16, marginTop: 4, marginBottom: 12 },
 
   content: { padding: 16 },
   card: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 14,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
+    borderWidth: 1,
   },
   tabRow: { flexDirection: 'row', marginBottom: 12, alignSelf: 'center' },
   tab: {
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 10,
-    backgroundColor: '#F2F4F8',
     marginRight: 8,
   },
-  tabActive: {
-    backgroundColor: '#2563EB',
-  },
-  tabText: { color: '#334155' },
-  tabTextActive: { color: '#fff', fontWeight: '600' },
+  tabText: { fontSize: 14 },
 
-  label: { marginBottom: 8, color: '#64748B', fontSize: 13 },
+  label: { marginBottom: 8, fontSize: 13 },
   textArea: {
     minHeight: 110,
     maxHeight: 220,
     borderRadius: 10,
-    backgroundColor: '#F8FAFF',
     padding: 12,
     borderWidth: 1,
-    borderColor: '#E6EEF8',
     marginBottom: 12,
   },
   analyzeBtn: {
-    backgroundColor: '#2563EB',
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: 'center',
   },
-  analyzeBtnText: { color: '#fff', fontWeight: '600' },
-  analyzeBtnDisabled: { backgroundColor: '#94A3B8' },
+  analyzeBtnText: { fontWeight: '600' },
+  analyzeBtnDisabled: { opacity: 0.5 },
 
   tipsCard: {
-    backgroundColor: '#c8dcfa',
     borderRadius: 12,
     padding: 14,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#E6EEF8',
   },
-  tipsTitle: { fontWeight: '700', marginBottom: 8, color: '#367cec' },
-  tip: { color: '#475569', marginBottom: 4, fontSize: 13 },
+  tipsTitle: { fontWeight: '700', marginBottom: 8 },
+  tip: { marginBottom: 4, fontSize: 13 },
 
   recent: { marginTop: 4 },
   recentHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, paddingHorizontal: 4 },
   recentTitle: { fontWeight: '700', fontSize: 16 },
-  scanCount: { color: '#64748B' },
+  scanCount: { fontSize: 13 },
 
   scanItem: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 12,
     marginLeft: 16,
@@ -377,36 +348,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     width: width - 32,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
+    borderWidth: 1,
   },
-  scanTitle: { fontWeight: '600', color: '#0F172A' },
-  scanTime: { color: '#94A3B8', marginTop: 4, fontSize: 12 },
+  scanTitle: { fontWeight: '600' },
+  scanTime: { marginTop: 4, fontSize: 12 },
   scanMeta: { alignItems: 'flex-end', marginLeft: 8 },
   riskBadge: { borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 16, fontSize: 12 },
   score: { marginTop: 6, fontWeight: '700' },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Dims the background
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   loaderContainer: {
-    backgroundColor: 'white',
     padding: 30,
     borderRadius: 15,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
   },
   loaderText: {
     marginTop: 15,
     fontSize: 16,
     fontWeight: '600',
-    color: '#1E293B',
   },
 })
 

@@ -1,4 +1,6 @@
+import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/services/auth/authContext";
+import { API_BASE_URL } from "@/services/config/apiConfig";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { useRouter } from "expo-router";
@@ -12,7 +14,6 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
-import { API_BASE_URL } from "./config";
 
 type AppItem = {
   id: string;
@@ -31,8 +32,7 @@ const mockApps: AppItem[] = [
 ];
 
 export default function AppDetection() {
-  // ✅ STATE MUST BE HERE (before return)
-
+  const { colors, isDarkMode } = useTheme();
   const { user } = useAuth();
   const [selectedApk, setSelectedApk] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [isScanning, setIsScanning] = useState(false);
@@ -109,78 +109,74 @@ export default function AppDetection() {
 
   const renderItem = ({ item }: { item: AppItem }) => {
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.left}>
-          <View style={styles.iconBox}>
-            <Ionicons name={item.icon} size={20} color="#2563EB" />
+          <View style={[styles.iconBox, { backgroundColor: isDarkMode ? 'rgba(0, 242, 254, 0.1)' : '#E0ECFF' }]}>
+            <Ionicons name={item.icon} size={20} color={colors.accent} />
           </View>
-          <Text style={styles.appName}>{item.name}</Text>
+          <Text style={[styles.appName, { color: colors.textPrimary }]}>{item.name}</Text>
         </View>
-        <TouchableOpacity style={styles.scanBtn} onPress={handleScan}>
-          <Text style={styles.scanText}>Scan</Text>
+        <TouchableOpacity style={[styles.scanBtn, { backgroundColor: colors.accent }]} onPress={handleScan}>
+          <Text style={[styles.scanText, { color: colors.background }]}>Scan</Text>
         </TouchableOpacity>
       </View>
     );
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <Text style={styles.title}>App Permission Analyzer</Text>
-      <Text style={styles.subtitle}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
+      <Text style={[styles.title, { color: colors.textPrimary }]}>App Permission Analyzer</Text>
+      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
         Identify apps with excessive permissions
       </Text>
 
-      {/* ✅ APK SELECTOR BLOCK */}
       <View style={styles.apkBlock}>
-        <View style={styles.apkTextBox}>
-          <Text style={styles.apkText}>
+        <View style={[styles.apkTextBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.apkText, { color: colors.textPrimary }]}>
             {selectedApk ? selectedApk.name : "No APK Selected"}
           </Text>
         </View>
 
         <TouchableOpacity
-          style={[styles.apkButton, isScanning && { opacity: 0.7 }]}
+          style={[styles.apkButton, { backgroundColor: colors.accent }, isScanning && { opacity: 0.7 }]}
           onPress={pickApk}
           disabled={isScanning}
         >
           {isScanning ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
+            <ActivityIndicator size="small" color={colors.background} />
           ) : (
-            <Text style={styles.apkButtonText}>
+            <Text style={[styles.apkButtonText, { color: colors.background }]}>
               {selectedApk ? "Change APK" : "Select APK"}
             </Text>
           )}
         </TouchableOpacity>
       </View>
 
-      {/* ✅ SCAN BUTTON */}
       {selectedApk && (
-        <TouchableOpacity style={styles.scanApkButton} onPress={handleScan} disabled={isScanning}>
+        <TouchableOpacity style={[styles.scanApkButton, { backgroundColor: colors.success }]} onPress={handleScan} disabled={isScanning}>
           {isScanning ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={colors.background} />
           ) : (
             <>
-              <Ionicons name="shield-checkmark" size={20} color="#FFFFFF" />
-              <Text style={styles.scanApkButtonText}>Scan Selected APK</Text>
+              <Ionicons name="shield-checkmark" size={20} color={colors.background} />
+              <Text style={[styles.scanApkButtonText, { color: colors.background }]}>Scan Selected APK</Text>
             </>
           )}
         </TouchableOpacity>
       )}
 
-      {/* --- SCROLLABLE PERMISSIONS DISPLAY SECTION --- */}
       {analysisResult && (
-        <View style={styles.resultContainer}>
+        <View style={[styles.resultContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.resultHeader}>
-            <Ionicons name="apps" size={20} color="#2563EB" />
-            <Text style={styles.resultPkgName}>{analysisResult.package_name}</Text>
+            <Ionicons name="apps" size={20} color={colors.accent} />
+            <Text style={[styles.resultPkgName, { color: colors.accent }]}>{analysisResult.package_name}</Text>
           </View>
 
-          <Text style={styles.permissionTitle}>
+          <Text style={[styles.permissionTitle, { color: colors.textSecondary }]}>
             Requested Permissions ({analysisResult.permissions.length})
           </Text>
 
-          {/* Nested ScrollView for permissions */}
-          <View style={styles.scrollArea}>
+          <View style={[styles.scrollArea, { backgroundColor: isDarkMode ? colors.background : '#F9FBFF' }]}>
             <ScrollView
               nestedScrollEnabled={true}
               contentContainerStyle={styles.permissionList}
@@ -191,11 +187,11 @@ export default function AppDetection() {
                 const isDangerous = ["CAMERA", "RECORD_AUDIO", "READ_SMS", "ACCESS_FINE_LOCATION"].includes(shortPerm || "");
 
                 return (
-                  <View key={index} style={[styles.permBadge, isDangerous && styles.dangerBadge]}>
-                    <Text style={[styles.permText, isDangerous && styles.dangerText]}>
+                  <View key={index} style={[styles.permBadge, { backgroundColor: isDarkMode ? colors.surface : '#F1F5F9', borderColor: colors.border }, isDangerous && (isDarkMode ? { backgroundColor: 'rgba(255, 77, 79, 0.1)', borderColor: colors.danger } : styles.dangerBadge)]}>
+                    <Text style={[styles.permText, { color: colors.textSecondary }, isDangerous && { color: colors.danger, fontWeight: '700' }]}>
                       {shortPerm}
                     </Text>
-                    {isDangerous && <Ionicons name="alert-circle" size={12} color="#DC2626" style={{ marginLeft: 4 }} />}
+                    {isDangerous && <Ionicons name="alert-circle" size={12} color={colors.danger} style={{ marginLeft: 4 }} />}
                   </View>
                 );
               })}
@@ -204,7 +200,6 @@ export default function AppDetection() {
         </View>
       )}
 
-      {/* ✅ APP LIST - Note: Changed to map since we are inside a ScrollView */}
       <View style={{ marginTop: 10 }}>
         {mockApps.map((item) => (
           <View key={item.id}>
@@ -213,7 +208,6 @@ export default function AppDetection() {
         ))}
       </View>
 
-      {/* Spacer for bottom padding */}
       <View style={{ height: 40 }} />
     </ScrollView>
   );
@@ -222,17 +216,14 @@ export default function AppDetection() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFF",
     paddingHorizontal: 16,
     paddingTop: 12,
   },
   title: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#0F172A",
   },
   subtitle: {
-    color: "#475569",
     marginBottom: 12,
   },
   apkBlock: {
@@ -242,31 +233,25 @@ const styles = StyleSheet.create({
   },
   apkTextBox: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
     marginRight: 10,
   },
   apkText: {
-    color: "#334155",
     fontSize: 13,
   },
   apkButton: {
-    backgroundColor: "#2563EB",
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 10,
   },
   apkButtonText: {
-    color: "#FFFFFF",
     fontWeight: "600",
     fontSize: 13,
   },
   scanApkButton: {
-    backgroundColor: "#10B981",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -274,29 +259,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 12,
     marginBottom: 18,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
   },
   scanApkButtonText: {
-    color: "#FFFFFF",
     fontWeight: "700",
     fontSize: 16,
     marginLeft: 8,
   },
   card: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 14,
     padding: 14,
     marginBottom: 12,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    borderWidth: 1,
   },
   left: {
     flexDirection: "row",
@@ -306,7 +282,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: "#E0ECFF",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
@@ -314,29 +289,21 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#0F172A",
   },
   scanBtn: {
-    backgroundColor: "#2563EB",
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 20,
   },
   scanText: {
-    color: "#fff",
     fontWeight: "600",
     fontSize: 13,
   },
   resultContainer: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 17,
     marginTop: 5,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    elevation: 2,
     marginBottom: 12
   },
   resultHeader: {
@@ -347,20 +314,17 @@ const styles = StyleSheet.create({
   resultPkgName: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#1E40AF",
     marginLeft: 8,
   },
   permissionTitle: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#64748B",
     marginBottom: 10,
     textTransform: "uppercase",
   },
   scrollArea: {
-    maxHeight: 200, // Limits the height of the permission block
+    maxHeight: 200,
     borderRadius: 8,
-    backgroundColor: "#F9FBFF",
     padding: 5,
   },
   permissionList: {
@@ -370,14 +334,12 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   permBadge: {
-    backgroundColor: "#F1F5F9",
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 8,
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#CBD5E1",
   },
   dangerBadge: {
     backgroundColor: "#FEF2F2",
@@ -386,10 +348,5 @@ const styles = StyleSheet.create({
   permText: {
     fontSize: 11,
     fontWeight: "500",
-    color: "#475569",
-  },
-  dangerText: {
-    color: "#DC2626",
-    fontWeight: "700",
   },
 });

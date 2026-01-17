@@ -1,10 +1,12 @@
+import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/services/auth/authContext';
-import { analyzeQrCode, extractQrCodeFromImage } from '@/services/calls/gemini';
+import { analyzeQrCode } from '@/services/calls/gemini';
 import { safeBrowsingCheck } from '@/services/calls/safeBrowsing';
 import { setLastQrResult } from '@/services/storage/qrStore';
 import { recordScan } from '@/services/storage/scanHistory';
 import { validateAndNormalizeUrl } from '@/services/utils/urlValidator';
 import { Ionicons } from '@expo/vector-icons';
+import BarcodeScanner from '@react-native-ml-kit/barcode-scanning';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
@@ -22,25 +24,23 @@ import {
 } from 'react-native';
 
 export default function QRScanner() {
+  const { colors, isDarkMode } = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('Analyzing URL Safety...');
-  // Removed scannedData state as it's not used - manualUrl serves the same purpose
   const [cameraActive, setCameraActive] = useState(false);
   const [manualUrl, setManualUrl] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
-  // FIX: Use refs to track lifecycle and prevent multiple triggers
   const isMounted = useRef(true);
   const isProcessingScan = useRef(false);
-  const isAnalyzing = useRef(false); // Prevent multiple simultaneous API calls
+  const isAnalyzing = useRef(false);
   const cameraRef = useRef<CameraView>(null);
   const router = useRouter();
   const { user } = useAuth();
 
   useEffect(() => {
     isMounted.current = true;
-    // Alert.alert('Debug User', user ? `Logged in: ${user.id}` : 'No User Found');
     if (!permission?.granted) {
       requestPermission();
     }
@@ -51,13 +51,11 @@ export default function QRScanner() {
 
 
   const safeBrowsingApi = async (url: string) => {
-    // Prevent multiple simultaneous requests
     if (isAnalyzing.current) {
       Alert.alert('Analysis in Progress', 'Please wait for the current analysis to complete.');
       return;
     }
 
-    // Comprehensive URL validation
     const validation = validateAndNormalizeUrl(url);
 
     if (!validation.isValid) {
@@ -76,12 +74,10 @@ export default function QRScanner() {
       setLoading(true);
       setLoadingMessage('Validating URL...');
 
-      // Small delay to show validation message
       await new Promise(resolve => setTimeout(resolve, 300));
 
       setLoadingMessage('Checking Google Safe Browsing database...');
 
-      // Run both checks in parallel for better performance
       const [safeBrowsingResult, geminiResult] = await Promise.allSettled([
         (async () => {
           setLoadingMessage('Checking Google Safe Browsing database...');
@@ -95,7 +91,6 @@ export default function QRScanner() {
 
       setLoadingMessage('Combining results...');
 
-      // Check Safe Browsing results
       let hasThreats = false;
       let threatDetails = '';
       let safeBrowsingSkipped = false;
@@ -103,7 +98,6 @@ export default function QRScanner() {
       if (safeBrowsingResult.status === 'fulfilled') {
         const sbData = safeBrowsingResult.value;
         if (sbData === null) {
-          // API key not configured - skip silently
           safeBrowsingSkipped = true;
         } else if (sbData.matches && sbData.matches.length > 0) {
           hasThreats = true;
@@ -114,7 +108,6 @@ export default function QRScanner() {
         }
       }
 
-      // Get Gemini analysis results
       let finalRisk: 'LOW' | 'MEDIUM' | 'HIGH' = 'LOW';
       let finalScore = 0;
       let finalReason = '';
@@ -129,30 +122,12 @@ export default function QRScanner() {
         finalReason = 'AI analysis unavailable. ';
       }
 
-      // Combine results: Safe Browsing threats override Gemini analysis
       if (hasThreats) {
         finalRisk = 'HIGH';
-        finalScore = Math.min(finalScore, 10); // Ensure low safety score if threats found
+        finalScore = Math.min(finalScore, 10);
         finalReason = threatDetails + finalReason;
       }
 
-      // Combine Safe Browsing failure info if applicable
-      // Note: We don't add Safe Browsing status to conclusion - Gemini analysis is sufficient
-      if (safeBrowsingSkipped || (safeBrowsingResult.status === 'fulfilled' && safeBrowsingResult.value === null)) {
-        // API key not configured or invalid - silently skip
-        // Analysis continues with Gemini only, which is sufficient
-      } else if (safeBrowsingResult.status === 'rejected') {
-        // This should rarely happen now since we return null instead of throwing
-        // But handle it gracefully if it does
-        const error = safeBrowsingResult.reason;
-        // Only log if it's not an API key related error
-        if (!(error && typeof error === 'object' && 'isApiKeyError' in error)) {
-          console.warn('Safe Browsing check failed:', error);
-        }
-        // Don't add to conclusion - Gemini analysis is sufficient
-      }
-
-      // Format Safe Browsing result for display
       let safeBrowsingText = 'Not checked';
       if (safeBrowsingSkipped || (safeBrowsingResult.status === 'fulfilled' && safeBrowsingResult.value === null)) {
         safeBrowsingText = 'API key not configured - check skipped';
@@ -168,10 +143,8 @@ export default function QRScanner() {
         safeBrowsingText = 'Check failed - Gemini analysis used instead';
       }
 
-      // Format Gemini result for display
       const geminiText = finalReason.trim() || 'Analysis completed.';
 
-      // Save result and navigate
       const result = {
         risk: finalRisk,
         score: finalScore,
@@ -183,14 +156,11 @@ export default function QRScanner() {
 
       setLastQrResult(result);
 
-      // Record scan in history
       if (user) {
-        // Map risk to status
         const status = finalRisk === 'HIGH' ? 'Dangerous' : finalRisk === 'MEDIUM' ? 'Suspicious' : 'Safe';
         recordScan(user.id, 'QR', status, `${validatedUrl.substring(0, 30)}...`, result);
       }
 
-      // Small delay before navigation to show completion
       setLoadingMessage('Analysis complete!');
       await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -209,33 +179,22 @@ export default function QRScanner() {
 
 
   const handleBarcodeScanned = async ({ data }: { data: string }) => {
-    // FIX: Comprehensive check to prevent multiple fires and ensure camera is active
     if (!cameraActive || isProcessingScan.current) return;
 
     isProcessingScan.current = true;
-    setCameraActive(false); // FIX: Immediately disable camera view
+    setCameraActive(false);
 
-
-
-    // Validate the scanned QR code data
     const validation = validateAndNormalizeUrl(data);
 
     if (validation.isValid) {
-      // Valid URL - set normalized version
       setManualUrl(validation.normalizedUrl!);
-
-      // Auto analyze
-      safeBrowsingApi(validation.normalizedUrl!);
     } else {
-      // Not a valid URL, but still show the raw data so user can edit it
       setManualUrl(data);
 
-      // Record as Safe/Unknown since it's just text
       if (user) {
         recordScan(user.id, 'QR', 'Safe', data.substring(0, 30));
       }
 
-      // Show validation error but don't block the user
       Alert.alert(
         'QR Code Scanned',
         `Scanned content: ${data.substring(0, 50)}${data.length > 50 ? '...' : ''}\n\n${validation.error || 'This QR code does not contain a valid URL.'}\n\nYou can edit it manually if needed.`,
@@ -243,7 +202,6 @@ export default function QRScanner() {
       );
     }
 
-    // Reset processing lock after a delay to allow future scans
     setTimeout(() => {
       isProcessingScan.current = false;
     }, 1000);
@@ -261,18 +219,17 @@ export default function QRScanner() {
   const pickImageFromGallery = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        // Using array format for new API (MediaTypeOptions deprecated)
         mediaTypes: ['images'],
         allowsEditing: false,
         quality: 1,
-        base64: true, // Get base64 for easier processing
+        base64: true,
       });
 
       if (!result.canceled && result.assets.length > 0) {
         const imageAsset = result.assets[0];
         const imageUri = imageAsset.uri;
         setSelectedImage(imageUri);
-        scanImageForBarcode(imageUri, imageAsset.base64 || undefined);
+        scanImageForBarcode(imageUri);
       }
     } catch (error) {
       console.error('Error picking image:', error);
@@ -280,8 +237,7 @@ export default function QRScanner() {
     }
   };
 
-  const scanImageForBarcode = async (imageUri: string, base64Data?: string) => {
-    // Prevent multiple simultaneous image scans
+  const scanImageForBarcode = async (imageUri: string) => {
     if (isAnalyzing.current) {
       Alert.alert('Processing in Progress', 'Please wait for the current image processing to complete.');
       return;
@@ -292,15 +248,10 @@ export default function QRScanner() {
       setLoading(true);
       setLoadingMessage('Processing image...');
 
-      // Use base64 if available, otherwise use URI
-      const imageData = base64Data
-        ? `data:image/jpeg;base64,${base64Data}`
-        : imageUri;
+      setLoadingMessage('Scanning for QR codes...');
+      const barcodes = await BarcodeScanner.scan(imageUri);
 
-      setLoadingMessage('Extracting QR code from image...');
-      const qrData = await extractQrCodeFromImage(imageData);
-
-      if (!qrData) {
+      if (!barcodes || barcodes.length === 0) {
         if (isMounted.current) {
           setLoading(false);
           setLoadingMessage('Analyzing URL Safety...');
@@ -314,11 +265,15 @@ export default function QRScanner() {
         return;
       }
 
-      // Validate the extracted QR code data
+      const qrData = barcodes[0].value;
+
+      if (!qrData) {
+        throw new Error('Could not read QR code data');
+      }
+
       const qrValidation = validateAndNormalizeUrl(qrData);
 
       if (!qrValidation.isValid) {
-        // QR code found but not a valid URL - still show it to user
         setManualUrl(qrData);
 
         if (isMounted.current) {
@@ -335,25 +290,11 @@ export default function QRScanner() {
         return;
       }
 
-      // Valid URL found - set it in the input field
       setManualUrl(qrValidation.normalizedUrl!);
 
       if (isMounted.current) {
         setLoading(false);
       }
-
-      // Optionally auto-analyze the QR code
-      Alert.alert(
-        'QR Code Detected',
-        `Found QR code: ${qrValidation.normalizedUrl!.substring(0, 50)}${qrValidation.normalizedUrl!.length > 50 ? '...' : ''}\n\nWould you like to analyze it now?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Analyze',
-            onPress: () => safeBrowsingApi(qrValidation.normalizedUrl!)
-          }
-        ]
-      );
     } catch (error) {
       console.error('Error scanning image for QR code:', error);
       if (isMounted.current) {
@@ -372,25 +313,25 @@ export default function QRScanner() {
 
   if (!permission) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#2563EB" />
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
 
   if (!permission.granted) {
     return (
-      <View style={styles.permissionContainer}>
-        <Ionicons name="camera-outline" size={60} color="#2563EB" />
-        <Text style={styles.permissionTitle}>Camera Permission Required</Text>
-        <Text style={styles.permissionText}>
+      <View style={[styles.permissionContainer, { backgroundColor: colors.background }]}>
+        <Ionicons name="camera-outline" size={60} color={colors.accent} />
+        <Text style={[styles.permissionTitle, { color: colors.textPrimary }]}>Camera Permission Required</Text>
+        <Text style={[styles.permissionText, { color: colors.textSecondary }]}>
           We need camera access to scan QR codes
         </Text>
         <TouchableOpacity
-          style={styles.permissionButton}
+          style={[styles.permissionButton, { backgroundColor: colors.accent }]}
           onPress={requestPermission}
         >
-          <Text style={styles.permissionButtonText}>Grant Permission</Text>
+          <Text style={[styles.permissionButtonText, { color: colors.background }]}>Grant Permission</Text>
         </TouchableOpacity>
       </View>
     );
@@ -398,10 +339,10 @@ export default function QRScanner() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563EB" />
-        <Text style={styles.loadingText}>{loadingMessage}</Text>
-        <Text style={styles.loadingSubtext}>This may take a few seconds...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.accent} />
+        <Text style={[styles.loadingText, { color: colors.accent }]}>{loadingMessage}</Text>
+        <Text style={[styles.loadingSubtext, { color: colors.textSecondary }]}>This may take a few seconds...</Text>
       </View>
     );
   }
@@ -415,22 +356,21 @@ export default function QRScanner() {
           barcodeScannerSettings={{
             barcodeTypes: ['qr'],
           }}
-          // FIX: Only pass handler if camera is logically active
           onBarcodeScanned={cameraActive ? handleBarcodeScanned : undefined}
         />
         <View style={styles.cameraOverlay}>
-          <View style={styles.cornerTopLeft} />
-          <View style={styles.cornerTopRight} />
-          <View style={styles.cornerBottomLeft} />
-          <View style={styles.cornerBottomRight} />
+          <View style={[styles.cornerTopLeft, { borderColor: colors.accent }]} />
+          <View style={[styles.cornerTopRight, { borderColor: colors.accent }]} />
+          <View style={[styles.cornerBottomLeft, { borderColor: colors.accent }]} />
+          <View style={[styles.cornerBottomRight, { borderColor: colors.accent }]} />
 
           <Ionicons
             name="camera-outline"
             size={50}
-            color="#999"
+            color={colors.textSecondary}
             style={styles.cameraIcon}
           />
-          <Text style={styles.cameraText}>Point camera at a QR code</Text>
+          <Text style={[styles.cameraText, { color: colors.textSecondary }]}>Point camera at a QR code</Text>
 
           <TouchableOpacity
             style={styles.closeCameraButton}
@@ -445,18 +385,18 @@ export default function QRScanner() {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.content, { backgroundColor: colors.background }]}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>QR Safety Scanner</Text>
-          <Text style={styles.headerSubtitle}>Scan codes securely before visiting</Text>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>QR Safety Scanner</Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Scan codes securely before visiting</Text>
         </View>
 
-        <View style={styles.cameraSection}>
-          <View style={[styles.corner, styles.cornerTL]} />
-          <View style={[styles.corner, styles.cornerTR]} />
-          <View style={[styles.corner, styles.cornerBL]} />
-          <View style={[styles.corner, styles.cornerBR]} />
+        <View style={[styles.cameraSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={[styles.corner, styles.cornerTL, { borderColor: colors.accent }]} />
+          <View style={[styles.corner, styles.cornerTR, { borderColor: colors.accent }]} />
+          <View style={[styles.corner, styles.cornerBL, { borderColor: colors.accent }]} />
+          <View style={[styles.corner, styles.cornerBR, { borderColor: colors.accent }]} />
 
           {selectedImage ? (
             <>
@@ -476,40 +416,40 @@ export default function QRScanner() {
             </>
           ) : (
             <>
-              <Ionicons name="camera-outline" size={48} color="#999" />
-              <Text style={styles.cameraPrompt}>Point camera at a QR code</Text>
+              <Ionicons name="camera-outline" size={48} color={isDarkMode ? colors.textSecondary : '#999'} />
+              <Text style={[styles.cameraPrompt, { color: colors.textSecondary }]}>Point camera at a QR code</Text>
             </>
           )}
 
           <View style={styles.buttonGroup}>
             <TouchableOpacity
-              style={[styles.activateCameraButton, (loading || isAnalyzing.current) && styles.buttonDisabled]}
+              style={[styles.activateCameraButton, { backgroundColor: colors.accent }, (loading || isAnalyzing.current) && styles.buttonDisabled]}
               onPress={() => setCameraActive(true)}
               disabled={loading || isAnalyzing.current}
             >
-              <Ionicons name="camera" size={20} color="#fff" style={styles.buttonIcon} />
-              <Text style={styles.activateCameraButtonText}>Camera</Text>
+              <Ionicons name="camera" size={20} color={colors.background} style={styles.buttonIcon} />
+              <Text style={[styles.activateCameraButtonText, { color: colors.background }]}>Camera</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.galleryButton, (loading || isAnalyzing.current) && styles.buttonDisabled]}
+              style={[styles.galleryButton, { backgroundColor: colors.accent }, (loading || isAnalyzing.current) && styles.buttonDisabled]}
               onPress={pickImageFromGallery}
               disabled={loading || isAnalyzing.current}
             >
-              <Ionicons name="image" size={20} color="#fff" style={styles.buttonIcon} />
-              <Text style={styles.galleryButtonText}>Gallery</Text>
+              <Ionicons name="image" size={20} color={colors.background} style={styles.buttonIcon} />
+              <Text style={[styles.galleryButtonText, { color: colors.background }]}>Gallery</Text>
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.orText}>OR ENTER MANUALLY</Text>
+          <Text style={[styles.orText, { color: colors.textSecondary }]}>OR ENTER MANUALLY</Text>
         </View>
 
         <View style={styles.urlInputSection}>
-          <View style={styles.urlInputWrapper}>
+          <View style={[styles.urlInputWrapper, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <TextInput
-              style={styles.urlInput}
+              style={[styles.urlInput, { color: colors.textPrimary }]}
               placeholder="https://example.com"
-              placeholderTextColor="#666"
+              placeholderTextColor={colors.textSecondary}
               value={manualUrl}
               onChangeText={setManualUrl}
               editable={true}
@@ -519,28 +459,28 @@ export default function QRScanner() {
                 style={styles.copyButton}
                 onPress={handleCopyToClipboard}
               >
-                <Ionicons name="copy" size={20} color="#2563EB" />
+                <Ionicons name="copy" size={20} color={colors.accent} />
               </TouchableOpacity>
             )}
           </View>
           {manualUrl && (
             <TouchableOpacity
-              style={[styles.analyzeButton, loading && styles.analyzeButtonDisabled]}
+              style={[styles.analyzeButton, { backgroundColor: colors.accent }, loading && styles.analyzeButtonDisabled]}
               onPress={() => safeBrowsingApi(manualUrl)}
               disabled={loading || isAnalyzing.current}
             >
               {loading ? (
-                <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />
+                <ActivityIndicator size="small" color={colors.background} style={{ marginRight: 8 }} />
               ) : null}
-              <Text style={styles.analyzeButtonText}>
+              <Text style={[styles.analyzeButtonText, { color: colors.background }]}>
                 {loading ? 'Analyzing...' : 'Analyze URL'}
               </Text>
             </TouchableOpacity>
           )}
         </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
+        <View style={[styles.footer, { borderTopColor: colors.border }]}>
+          <Text style={[styles.footerText, { color: colors.textSecondary }]}>
             We analyze the destination URL for phishing and malware before you visit.
           </Text>
         </View>
@@ -552,20 +492,18 @@ export default function QRScanner() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFF',
   },
   content: {
     flex: 1,
     padding: 20,
     justifyContent: 'space-between',
-    backgroundColor: '#F8FAFF',
   },
   camera: {
     flex: 1,
   },
   cameraOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -577,7 +515,6 @@ const styles = StyleSheet.create({
     height: 40,
     borderTopWidth: 3,
     borderLeftWidth: 3,
-    borderColor: '#2563EB',
   },
   cornerTopRight: {
     position: 'absolute',
@@ -587,7 +524,6 @@ const styles = StyleSheet.create({
     height: 40,
     borderTopWidth: 3,
     borderRightWidth: 3,
-    borderColor: '#2563EB',
   },
   cornerBottomLeft: {
     position: 'absolute',
@@ -597,7 +533,6 @@ const styles = StyleSheet.create({
     height: 40,
     borderBottomWidth: 3,
     borderLeftWidth: 3,
-    borderColor: '#2563EB',
   },
   cornerBottomRight: {
     position: 'absolute',
@@ -607,13 +542,11 @@ const styles = StyleSheet.create({
     height: 40,
     borderBottomWidth: 3,
     borderRightWidth: 3,
-    borderColor: '#2563EB',
   },
   cameraIcon: {
     marginBottom: 10,
   },
   cameraText: {
-    color: '#999',
     fontSize: 14,
     marginBottom: 20,
     fontWeight: '500',
@@ -636,34 +569,24 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#0F172A',
     marginBottom: 6,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#6B7280',
     fontWeight: '400',
   },
   cameraSection: {
     borderWidth: 1,
-    borderColor: '#E2E8F0',
     borderRadius: 16,
     padding: 30,
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     position: 'relative',
     marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
   },
   corner: {
     position: 'absolute',
     width: 20,
     height: 20,
-    borderColor: '#2563EB',
   },
   cornerTL: {
     top: 12,
@@ -690,7 +613,6 @@ const styles = StyleSheet.create({
     borderRightWidth: 2,
   },
   cameraPrompt: {
-    color: '#6B7280',
     fontSize: 14,
     marginTop: 16,
     marginBottom: 24,
@@ -702,18 +624,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 20,
     resizeMode: 'contain',
-  },
-  imageLoadedText: {
-    color: '#2563EB',
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  instructionText: {
-    color: '#6B7280',
-    fontSize: 12,
-    marginBottom: 20,
-    fontWeight: '400',
   },
   clearImageButton: {
     position: 'absolute',
@@ -734,7 +644,6 @@ const styles = StyleSheet.create({
   },
   activateCameraButton: {
     flex: 1,
-    backgroundColor: '#2563EB',
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderRadius: 28,
@@ -744,7 +653,6 @@ const styles = StyleSheet.create({
   },
   galleryButton: {
     flex: 1,
-    backgroundColor: '#2563EB',
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderRadius: 28,
@@ -756,17 +664,14 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   activateCameraButtonText: {
-    color: '#fff',
     fontSize: 14,
     fontWeight: '700',
   },
   galleryButtonText: {
-    color: '#fff',
     fontSize: 14,
     fontWeight: '700',
   },
   orText: {
-    color: '#9CA3AF',
     fontSize: 12,
     fontWeight: '600',
     letterSpacing: 0.5,
@@ -777,16 +682,13 @@ const styles = StyleSheet.create({
   urlInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
     borderRadius: 12,
     paddingHorizontal: 16,
     marginBottom: 12,
   },
   urlInput: {
     flex: 1,
-    color: '#0F172A',
     fontSize: 14,
     paddingVertical: 14,
     fontWeight: '500',
@@ -795,24 +697,20 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   analyzeButton: {
-    backgroundColor: '#2563EB',
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 8,
     alignItems: 'center',
   },
   analyzeButtonText: {
-    color: '#fff',
     fontSize: 14,
     fontWeight: '700',
   },
   footer: {
     paddingTop: 20,
     borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
   },
   footerText: {
-    color: '#64748B',
     fontSize: 12,
     lineHeight: 18,
     fontWeight: '400',
@@ -820,21 +718,18 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#F8FAFF',
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#2563EB',
     fontWeight: '600',
     textAlign: 'center',
   },
   loadingSubtext: {
     marginTop: 8,
     fontSize: 12,
-    color: '#6B7280',
     fontWeight: '400',
     textAlign: 'center',
   },
@@ -846,7 +741,6 @@ const styles = StyleSheet.create({
   },
   permissionContainer: {
     flex: 1,
-    backgroundColor: '#F8FAFF',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -854,24 +748,20 @@ const styles = StyleSheet.create({
   permissionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#0F172A',
     marginTop: 16,
     marginBottom: 8,
   },
   permissionText: {
     fontSize: 14,
-    color: '#6B7280',
     textAlign: 'center',
     marginBottom: 24,
   },
   permissionButton: {
-    backgroundColor: '#2563EB',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
   },
   permissionButtonText: {
-    color: '#fff',
     fontSize: 14,
     fontWeight: '700',
   },

@@ -1,4 +1,5 @@
-import { Link } from 'expo-router';
+import { useTheme } from '@/context/ThemeContext';
+import { router } from 'expo-router';
 import React from 'react';
 import {
   ScrollView,
@@ -9,47 +10,57 @@ import {
 } from 'react-native';
 
 export default function AuthIndex() {
+  const { colors, isDarkMode } = useTheme();
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: colors.background }]}>
       {/* Logo Section */}
-      <View style={styles.heroSection}>
+      <View style={[styles.heroSection, { backgroundColor: isDarkMode ? colors.surface : '#EFF6FF', borderBottomColor: colors.border }]}>
         <Text style={styles.heroBadge}>🛡️</Text>
-        <Text style={styles.heroTitle}>CyberTrust Guardian</Text>
-        <Text style={styles.heroSubtitle}>Protect Yourself from Digital Threats</Text>
+        <Text style={[styles.heroTitle, { color: colors.accent }]}>CyberTrust Guardian</Text>
+        <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>Protect Yourself from Digital Threats</Text>
       </View>
 
       {/* Features Section */}
       <View style={styles.featuresSection}>
-        <Text style={styles.sectionTitle}>Why CyberGuardian?</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Why CyberGuardian?</Text>
 
-        <View style={styles.featureCard}>
+        <View style={[styles.featureCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={styles.featureIcon}>✉️</Text>
-          <Text style={styles.featureTitle}>Phishing Detection</Text>
-          <Text style={styles.featureDescription}>
+          <Text style={[styles.featureTitle, { color: colors.textPrimary }]}>Phishing Detection</Text>
+          <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>
             AI-powered analysis to detect phishing emails, SMS, and links in real-time
           </Text>
         </View>
 
-        <View style={styles.featureCard}>
+        <View style={[styles.featureCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={styles.featureIcon}>📸</Text>
-          <Text style={styles.featureTitle}>QR Code Safety</Text>
-          <Text style={styles.featureDescription}>
+          <Text style={[styles.featureTitle, { color: colors.textPrimary }]}>QR Code Safety</Text>
+          <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>
             Scan QR codes safely and verify URLs before visiting them
           </Text>
         </View>
 
-        <View style={styles.featureCard}>
+        <View style={[styles.featureCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={styles.featureIcon}>🔒</Text>
-          <Text style={styles.featureTitle}>App Permissions</Text>
-          <Text style={styles.featureDescription}>
+          <Text style={[styles.featureTitle, { color: colors.textPrimary }]}>App Permissions</Text>
+          <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>
             Analyze installed apps for excessive permissions and security risks
           </Text>
         </View>
 
-        <View style={styles.featureCard}>
+        <View style={[styles.featureCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={styles.featureIcon}>📱</Text>
+          <Text style={[styles.featureTitle, { color: colors.textPrimary }]}>Device Integrity</Text>
+          <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>
+            Verify your system's health with root, emulator, and integrity check diagnostics
+          </Text>
+        </View>
+
+        <View style={[styles.featureCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={styles.featureIcon}>🔐</Text>
-          <Text style={styles.featureTitle}>Breach Checker</Text>
-          <Text style={styles.featureDescription}>
+          <Text style={[styles.featureTitle, { color: colors.textPrimary }]}>Breach Checker</Text>
+          <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>
             Check if your email or password has appeared in known data breaches
           </Text>
         </View>
@@ -57,49 +68,56 @@ export default function AuthIndex() {
 
       {/* Stats Section */}
       <View style={styles.statsSection}>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>1M+</Text>
-          <Text style={styles.statLabel}>Threats Detected</Text>
+        <View style={[styles.statCard, { backgroundColor: colors.accent }]}>
+          <Text style={[styles.statNumber, { color: colors.background }]}>1M+</Text>
+          <Text style={[styles.statLabel, { color: colors.background }]}>Threats Detected</Text>
         </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>500K+</Text>
-          <Text style={styles.statLabel}>Users Protected</Text>
+        <View style={[styles.statCard, { backgroundColor: colors.accent }]}>
+          <Text style={[styles.statNumber, { color: colors.background }]}>500K+</Text>
+          <Text style={[styles.statLabel, { color: colors.background }]}>Users Protected</Text>
         </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>24/7</Text>
-          <Text style={styles.statLabel}>Active Monitoring</Text>
+        <View style={[styles.statCard, { backgroundColor: colors.accent }]}>
+          <Text style={[styles.statNumber, { color: colors.background }]}>24/7</Text>
+          <Text style={[styles.statLabel, { color: colors.background }]}>Active Monitoring</Text>
         </View>
       </View>
 
       {/* CTA Section */}
       <View style={styles.ctaSection}>
-        <Link href="/auth/sign-up" asChild>
-          <TouchableOpacity style={styles.signUpButton}>
-            <Text style={styles.signUpButtonText}>Create Account</Text>
-          </TouchableOpacity>
-        </Link>
+        <TouchableOpacity
+          style={[styles.signUpButton, { backgroundColor: colors.accent }]}
+          onPress={() => router.push('/auth/sign-up' as any)}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.signUpButtonText, { color: colors.background }]}>Create Account</Text>
+        </TouchableOpacity>
 
-        <Link href="/auth/sign-in" asChild>
-          <TouchableOpacity style={styles.signInButton}>
-            <Text style={styles.signInButtonText}>Sign In</Text>
-          </TouchableOpacity>
-        </Link>
+        <TouchableOpacity
+          style={[styles.signInButton, {
+            borderColor: colors.accent,
+            backgroundColor: isDarkMode ? 'rgba(0, 242, 254, 0.05)' : colors.surface
+          }]}
+          onPress={() => router.push('/auth/sign-in' as any)}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.signInButtonText, { color: colors.accent }]}>Sign In</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Trust Section */}
-      <View style={styles.trustSection}>
-        <Text style={styles.trustTitle}>We Take Your Security Seriously</Text>
+      <View style={[styles.trustSection, { backgroundColor: isDarkMode ? colors.surface : '#F0FDF4', borderLeftColor: colors.success }]}>
+        <Text style={[styles.trustTitle, { color: isDarkMode ? colors.textPrimary : '#166534' }]}>We Take Your Security Seriously</Text>
         <View style={styles.trustFeature}>
-          <Text style={styles.trustIcon}>✓</Text>
-          <Text style={styles.trustText}>Military-grade encryption for all data</Text>
+          <Text style={[styles.trustIcon, { color: colors.success }]}>✓</Text>
+          <Text style={[styles.trustText, { color: isDarkMode ? colors.textSecondary : '#166534' }]}>Military-grade encryption for all data</Text>
         </View>
         <View style={styles.trustFeature}>
-          <Text style={styles.trustIcon}>✓</Text>
-          <Text style={styles.trustText}>No ads or data selling</Text>
+          <Text style={[styles.trustIcon, { color: colors.success }]}>✓</Text>
+          <Text style={[styles.trustText, { color: isDarkMode ? colors.textSecondary : '#166534' }]}>No ads or data selling</Text>
         </View>
         <View style={styles.trustFeature}>
-          <Text style={styles.trustIcon}>✓</Text>
-          <Text style={styles.trustText}>Regular security audits</Text>
+          <Text style={[styles.trustIcon, { color: colors.success }]}>✓</Text>
+          <Text style={[styles.trustText, { color: isDarkMode ? colors.textSecondary : '#166534' }]}>Regular security audits</Text>
         </View>
       </View>
     </ScrollView >
@@ -109,16 +127,13 @@ export default function AuthIndex() {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    backgroundColor: '#F8FAFF',
     paddingBottom: 40,
   },
   heroSection: {
     alignItems: 'center',
     paddingVertical: 50,
     paddingHorizontal: 20,
-    backgroundColor: '#EFF6FF',
     borderBottomWidth: 1,
-    borderBottomColor: '#DBEAFE',
   },
   heroBadge: {
     fontSize: 64,
@@ -127,20 +142,17 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#1E40AF',
     marginBottom: 8,
     textAlign: 'center',
   },
   heroSubtitle: {
     fontSize: 16,
-    color: '#1E3A8A',
     textAlign: 'center',
     lineHeight: 24,
   },
   sectionTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1A202C',
     marginBottom: 16,
     textAlign: 'center',
   },
@@ -149,13 +161,11 @@ const styles = StyleSheet.create({
     paddingVertical: 30,
   },
   featureCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
   },
   featureIcon: {
     fontSize: 32,
@@ -164,12 +174,10 @@ const styles = StyleSheet.create({
   featureTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1A202C',
     marginBottom: 4,
   },
   featureDescription: {
     fontSize: 13,
-    color: '#4A5568',
     lineHeight: 19,
   },
   statsSection: {
@@ -180,7 +188,6 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#2563EB',
     borderRadius: 12,
     paddingVertical: 20,
     alignItems: 'center',
@@ -189,57 +196,57 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#FFFFFF',
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 11,
-    color: '#DBEAFE',
     textAlign: 'center',
     fontWeight: '600',
   },
   ctaSection: {
     paddingHorizontal: 20,
     paddingVertical: 30,
+    alignItems: 'center',
   },
   signUpButton: {
-    backgroundColor: '#2563EB',
-    borderRadius: 8,
-    paddingVertical: 14,
+    width: '100%',
+    borderRadius: 28,
+    paddingVertical: 18,
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
+    // Add shadow for visibility
+    shadowColor: "#00F2FE",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   signUpButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   signInButton: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    paddingVertical: 14,
+    width: '100%',
+    borderRadius: 28,
+    paddingVertical: 18,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#2563EB',
   },
   signInButtonText: {
-    color: '#2563EB',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
   },
   trustSection: {
     paddingHorizontal: 20,
     paddingVertical: 30,
-    backgroundColor: '#F0FDF4',
     marginHorizontal: 20,
     borderRadius: 12,
     borderLeftWidth: 4,
-    borderLeftColor: '#059669',
   },
   trustTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#166534',
     marginBottom: 16,
   },
   trustFeature: {
@@ -249,14 +256,12 @@ const styles = StyleSheet.create({
   },
   trustIcon: {
     fontSize: 18,
-    color: '#059669',
     marginRight: 12,
     fontWeight: '700',
   },
   trustText: {
     flex: 1,
     fontSize: 13,
-    color: '#166534',
     lineHeight: 20,
   },
 });

@@ -1,3 +1,4 @@
+import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/services/auth/authContext';
 import { validateSignInForm } from '@/services/auth/validation';
 import { router } from 'expo-router';
@@ -15,6 +16,7 @@ import {
 
 export default function SignIn() {
   const { signIn, isLoading } = useAuth();
+  const { colors, isDarkMode } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -65,58 +67,59 @@ export default function SignIn() {
   const isFormValid = email.trim() !== '' && password !== '';
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.headerSection}>
         <Text style={styles.logo}>🛡️</Text>
-        <Text style={styles.title}>Sign In</Text>
-        <Text style={styles.subtitle}>Welcome back to CyberGuardian</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>Sign In</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Welcome back to CyberGuardian</Text>
       </View>
 
       <View style={styles.formSection}>
         {apiError && (
-          <View style={styles.errorBanner}>
-            <Text style={styles.errorBannerText}>{apiError}</Text>
+          <View style={[styles.errorBanner, { backgroundColor: isDarkMode ? 'rgba(255, 126, 95, 0.1)' : '#FEF2F2', borderColor: colors.danger }]}>
+            <Text style={[styles.errorBannerText, { color: colors.danger }]}>{apiError}</Text>
           </View>
         )}
 
         {/* Email Input */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Email Address</Text>
+          <Text style={[styles.label, { color: colors.textPrimary }]}>Email Address</Text>
           <TextInput
-            style={[styles.input, fieldErrors.email && styles.inputError]}
+            style={[styles.input, fieldErrors.email && styles.inputError, { backgroundColor: colors.surface, color: colors.textPrimary, borderColor: colors.border }]}
             placeholder="Enter your email"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
             editable={!isLoading}
-            placeholderTextColor="#A0AEC0"
+            placeholderTextColor={colors.textSecondary}
           />
           {fieldErrors.email && (
-            <Text style={styles.errorText}>⚠️ {fieldErrors.email}</Text>
+            <Text style={[styles.errorText, { color: colors.danger }]}>⚠️ {fieldErrors.email}</Text>
           )}
         </View>
 
         {/* Password Input */}
         <View style={styles.inputGroup}>
           <View style={styles.labelRow}>
-            <Text style={styles.label}>Password</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>Password</Text>
             <TouchableOpacity onPress={() => router.push('/auth/forgot-password')} disabled={isLoading}>
-              <Text style={styles.forgotLink}>Forgot?</Text>
+              <Text style={[styles.forgotLink, { color: colors.accent }]}>Forgot?</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.passwordInputContainer}>
+          <View style={[styles.passwordInputContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <TextInput
               style={[
                 styles.passwordInput,
                 fieldErrors.password && styles.inputError,
+                { color: colors.textPrimary }
               ]}
               placeholder="Enter your password"
               secureTextEntry={!showPassword}
               value={password}
               onChangeText={setPassword}
               editable={!isLoading}
-              placeholderTextColor="#A0AEC0"
+              placeholderTextColor={colors.textSecondary}
             />
             <TouchableOpacity
               onPress={() => setShowPassword(!showPassword)}
@@ -126,7 +129,7 @@ export default function SignIn() {
             </TouchableOpacity>
           </View>
           {fieldErrors.password && (
-            <Text style={styles.errorText}>⚠️ {fieldErrors.password}</Text>
+            <Text style={[styles.errorText, { color: colors.danger }]}>⚠️ {fieldErrors.password}</Text>
           )}
         </View>
 
@@ -137,37 +140,37 @@ export default function SignIn() {
             onPress={() => setRememberMe(!rememberMe)}
             disabled={isLoading}
           >
-            <Text style={styles.checkboxText}>{rememberMe ? '☑️' : '☐'}</Text>
+            <Text style={[styles.checkboxText, { color: colors.accent }]}>{rememberMe ? '☑️' : '☐'}</Text>
           </TouchableOpacity>
-          <Text style={styles.rememberMeText}>Remember me on this device</Text>
+          <Text style={[styles.rememberMeText, { color: colors.textSecondary }]}>Remember me on this device</Text>
         </View>
 
         {/* Sign In Button */}
         <TouchableOpacity
-          style={[styles.signInButton, (!isFormValid || isLoading) && styles.buttonDisabled]}
+          style={[styles.signInButton, (!isFormValid || isLoading) && styles.buttonDisabled, { backgroundColor: colors.accent }]}
           onPress={handleSignIn}
           disabled={isLoading}
         >
           {isLoading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.background} />
           ) : (
-            <Text style={styles.signInButtonText}>Sign In</Text>
+            <Text style={[styles.signInButtonText, { color: colors.background }]}>Sign In</Text>
           )}
         </TouchableOpacity>
 
         {/* Security Tips */}
-        <View style={styles.tipsCard}>
-          <Text style={styles.tipsTitle}>🔐 Security Tip</Text>
-          <Text style={styles.tipsText}>
+        <View style={[styles.tipsCard, { backgroundColor: isDarkMode ? colors.surface : '#EFF6FF', borderLeftColor: colors.accent }]}>
+          <Text style={[styles.tipsTitle, { color: colors.accent }]}>🔐 Security Tip</Text>
+          <Text style={[styles.tipsText, { color: colors.textSecondary }]}>
             Never share your password with anyone. CyberGuardian will never ask for your password via email.
           </Text>
         </View>
 
         {/* Sign Up Link */}
         <View style={styles.signUpContainer}>
-          <Text style={styles.signUpText}>Don't have an account? </Text>
+          <Text style={[styles.signUpText, { color: colors.textSecondary }]}>Don't have an account? </Text>
           <TouchableOpacity onPress={() => router.push('/auth/sign-up')} disabled={isLoading}>
-            <Text style={styles.signUpLink}>Create one</Text>
+            <Text style={[styles.signUpLink, { color: colors.accent }]}>Create one</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -178,7 +181,6 @@ export default function SignIn() {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    backgroundColor: '#F8FAFF',
     paddingBottom: 30,
   },
   headerSection: {
@@ -193,12 +195,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#1A202C',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    color: '#718096',
     textAlign: 'center',
   },
   formSection: {
@@ -210,7 +210,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2D3748',
     marginBottom: 8,
   },
   labelRow: {
@@ -221,45 +220,36 @@ const styles = StyleSheet.create({
   },
   forgotLink: {
     fontSize: 12,
-    color: '#2563EB',
     fontWeight: '600',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#E2E8F0',
     borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,
-    backgroundColor: '#FFFFFF',
-    color: '#2D3748',
   },
   inputError: {
-    borderColor: '#DC2626',
-    backgroundColor: '#FEF2F2',
+    borderColor: '#FF7E5F', // Use Coral for error
   },
   passwordInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
     borderRadius: 8,
     paddingRight: 12,
-    backgroundColor: '#FFFFFF',
   },
   passwordInput: {
     flex: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,
-    color: '#2D3748',
   },
   eyeIcon: {
     fontSize: 18,
     marginLeft: 8,
   },
   errorText: {
-    color: '#DC2626',
     fontSize: 12,
     marginTop: 6,
     fontWeight: '500',
@@ -277,27 +267,29 @@ const styles = StyleSheet.create({
   },
   rememberMeText: {
     fontSize: 13,
-    color: '#4A5568',
   },
   signInButton: {
-    backgroundColor: '#2563EB',
-    borderRadius: 8,
-    paddingVertical: 14,
+    borderRadius: 28,
+    paddingVertical: 18,
     alignItems: 'center',
     marginBottom: 20,
+    // Add shadow for premium feel
+    shadowColor: "#00F2FE",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   signInButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   tipsCard: {
-    backgroundColor: '#EFF6FF',
     borderLeftWidth: 4,
-    borderLeftColor: '#2563EB',
     borderRadius: 6,
     paddingHorizontal: 12,
     paddingVertical: 12,
@@ -306,12 +298,10 @@ const styles = StyleSheet.create({
   tipsTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#1E40AF',
     marginBottom: 4,
   },
   tipsText: {
     fontSize: 12,
-    color: '#1E40AF',
     lineHeight: 18,
   },
   signUpContainer: {
@@ -321,26 +311,12 @@ const styles = StyleSheet.create({
   },
   signUpText: {
     fontSize: 14,
-    color: '#4A5568',
   },
   signUpLink: {
     fontSize: 14,
-    color: '#2563EB',
     fontWeight: '600',
   },
-  demoContainer: {
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginTop: 20,
-  },
-  demoText: {
-    fontSize: 11,
-    color: '#A0AEC0',
-    fontStyle: 'italic',
-  },
   errorBanner: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#DC2626',
     borderWidth: 1,
     borderRadius: 8,
     padding: 12,
@@ -348,7 +324,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   errorBannerText: {
-    color: '#DC2626',
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
