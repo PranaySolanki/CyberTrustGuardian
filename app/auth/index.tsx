@@ -56,6 +56,14 @@ export default function AuthIndex() {
               Check if your email or password has appeared in known data breaches
             </Text>
           </View>
+
+          <View style={styles.featureCard}>
+            <Text style={styles.featureIcon}>📱</Text>
+            <Text style={styles.featureTitle}>Device Integrity</Text>
+            <Text style={styles.featureDescription}>
+              Detect root access, emulators, and system tampering to ensure your device environment is safe
+            </Text>
+          </View>
         </View>
 
         {/* Stats Section */}

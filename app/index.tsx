@@ -34,6 +34,16 @@ export default function Index() {
 
   const [stats, setStats] = useState({ scansToday: 0, threatsBlocked: 0, appsAnalyzed: 0, safetyScore: 100 });
   const [recentScans, setRecentScans] = useState<any[]>([]);
+  const [showGreeting, setShowGreeting] = useState(true);
+
+  useEffect(() => {
+    // Hide greeting after 10 seconds
+    const timer = setTimeout(() => {
+      setShowGreeting(false);
+    }, 10000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -135,7 +145,7 @@ export default function Index() {
           </TouchableOpacity>
         </View>
 
-        {user && (
+        {user && showGreeting && (
           <View style={styles.userCard}>
             <Text style={styles.userGreeting}>Welcome back, {user.fullName}!</Text>
             <Text style={styles.userEmail}>{user.email}</Text>

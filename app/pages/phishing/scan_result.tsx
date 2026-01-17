@@ -17,13 +17,24 @@ export default function PhishingScanResult() {
   } | null>(null)
 
   useEffect(() => {
-    // Strictly load from store as requested
+    if (data) return;
+    // First try to load from store (for fresh scans)
     const last = getLastPhishingResult()
     if (last) {
       setData(last)
       clearLastPhishingResult()
+    } else if (params && params.risk) {
+      // Fallback to params (for navigation from history)
+      setData({
+        risk: params.risk as string,
+        score: typeof params.score === 'string' ? parseInt(params.score, 10) : params.score as unknown as number,
+        reason: (params.reason as string) || (params.details as string),
+        content: params.content as string,
+        safeBrowsingResult: params.safeBrowsingResult as string,
+        geminiResult: params.geminiResult as string,
+      })
     }
-  }, [])
+  }, [params, data])
 
   if (!data) {
     return (
