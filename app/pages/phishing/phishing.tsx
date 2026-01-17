@@ -1,7 +1,7 @@
 import { useAuth } from '@/services/auth/authContext'
 import { analyzePhisingAttempt } from '@/services/calls/gemini'
-import { recordScan } from '@/services/scanHistory'
 import { setLastPhishingResult } from '@/services/storage/phishingStore'
+import { recordScan } from '@/services/storage/scanHistory'
 import { router } from 'expo-router'
 import React, { useState } from 'react'
 import {

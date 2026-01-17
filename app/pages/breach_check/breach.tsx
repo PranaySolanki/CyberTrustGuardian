@@ -1,7 +1,7 @@
 import { useAuth } from '@/services/auth/authContext'
 import { breachCheck } from '@/services/calls/breach'
-import { recordScan } from '@/services/scanHistory'
 import { setLastBreachResult } from '@/services/storage/breachStore'
+import { recordScan } from '@/services/storage/scanHistory'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import React, { useEffect, useState } from 'react'
@@ -56,7 +56,7 @@ type BreachHeaderProps = {
   onAnalyze: () => void
   showPassword: boolean
   setShowPassword: (v: boolean) => void
-} 
+}
 
 function BreachScanHeader({ activeTab, setActiveTab, text, setText, emailValid, loading, scansLength, onAnalyze, showPassword, setShowPassword }: BreachHeaderProps) {
   const renderTab = (tab: Tab) => (

@@ -1,5 +1,5 @@
+import { db } from '@/services/firebase/firebase';
 import { addDoc, collection, doc, runTransaction, serverTimestamp } from 'firebase/firestore';
-import { db } from './firebase';
 
 export type ScanType = 'QR' | 'Email' | 'SMS' | 'URL' | 'App' | 'Breach';
 export type ScanStatus = 'Safe' | 'Suspicious' | 'Dangerous' | 'Unknown';
