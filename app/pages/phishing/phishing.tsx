@@ -4,8 +4,10 @@ import { safeBrowsingCheck } from '@/services/calls/safeBrowsing'
 import { db } from '@/services/firebase/firebase'
 import { setLastPhishingResult } from '@/services/storage/phishingStore'
 import { recordScan } from '@/services/storage/scanHistory'
+import { recognizeText } from '@/services/utils/mlKit'
 import { validateAndNormalizeUrl } from '@/services/utils/urlValidator'
 import { Ionicons } from '@expo/vector-icons'
+import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
 import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore'
 import React, { useEffect, useState } from 'react'
@@ -18,7 +20,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -43,10 +45,11 @@ type PhishingHeaderProps = {
   setText: (s: string) => void
   loading: boolean
   onAnalyze: () => void
+  onPickImage: () => void
   scansLength: number
 }
 
-function PhishingScanHeader({ activeTab, setActiveTab, text, setText, loading, onAnalyze, scansLength }: PhishingHeaderProps) {
+function PhishingScanHeader({ activeTab, setActiveTab, text, setText, loading, onAnalyze, onPickImage, scansLength }: PhishingHeaderProps) {
   const renderTab = (tab: Tab) => (
     <TouchableOpacity
       key={tab}
@@ -85,9 +88,23 @@ function PhishingScanHeader({ activeTab, setActiveTab, text, setText, loading, o
           placeholderTextColor={'#53647bff'}
         />
 
-        <TouchableOpacity style={styles.analyzeBtn} disabled={loading} onPress={onAnalyze}>
-          <Text style={styles.analyzeBtnText}>Analyze Content</Text>
-        </TouchableOpacity>
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={[styles.analyzeBtn, { flex: 1, marginRight: 8 }]}
+            disabled={loading}
+            onPress={onAnalyze}
+          >
+            <Text style={styles.analyzeBtnText}>Analyze Content</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.galleryBtn, loading && styles.analyzeBtnDisabled]}
+            onPress={onPickImage}
+            disabled={loading}
+          >
+            <Ionicons name="image-outline" size={24} color="#2563EB" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.tipsCard}>
@@ -252,6 +269,52 @@ export default function Phishing() {
     }
   }
 
+  const pickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: false,
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets.length > 0) {
+        setLoading(true);
+        const imageUri = result.assets[0].uri;
+
+        // Use ML Kit OCR
+        const ocrResult = await recognizeText(imageUri);
+
+        if (ocrResult) {
+          const extractedUrls = extractUrlsFromText(ocrResult.text);
+
+          if (extractedUrls.length > 0) {
+            // Found URLs! Use the first one and switch to URL tab
+            setActiveTab('URL');
+            setText(extractedUrls[0]);
+
+            if (extractedUrls.length > 1) {
+              Alert.alert(
+                'Multiple URLs Found',
+                `We found ${extractedUrls.length} URLs in the image. We've pasted the first one for you.`,
+                [{ text: 'OK' }]
+              );
+            }
+          } else {
+            // No URLs, just paste the raw text (likely an Email or SMS screenshot)
+            setText(ocrResult.text);
+          }
+        } else {
+          Alert.alert('No Text Found', 'Failed to extract text from the selected image.');
+        }
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      alert('Failed to pick image from gallery.');
+      setLoading(false);
+    }
+  }
+
   const renderTab = (tab: Tab) => (
     <TouchableOpacity
       key={tab}
@@ -288,7 +351,18 @@ export default function Phishing() {
         data={scans}
         keyExtractor={i => i.id}
         renderItem={ScanHistory}
-        ListHeaderComponent={<PhishingScanHeader activeTab={activeTab} setActiveTab={setActiveTab} text={text} setText={setText} loading={loading} onAnalyze={analyze} scansLength={scans.length} />}
+        ListHeaderComponent={
+          <PhishingScanHeader
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            text={text}
+            setText={setText}
+            loading={loading}
+            onAnalyze={analyze}
+            onPickImage={pickImage}
+            scansLength={scans.length}
+          />
+        }
         keyboardShouldPersistTaps="handled"
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         contentContainerStyle={{ paddingBottom: 40 }}
@@ -299,7 +373,7 @@ export default function Phishing() {
         <View style={styles.overlay}>
           <View style={styles.loaderContainer}>
             <ActivityIndicator size="large" color="#2563EB" />
-            <Text style={styles.loaderText}>Analyzing with AI...</Text>
+            <Text style={styles.loaderText}>Processing...</Text>
           </View>
         </View>
       </Modal>
@@ -357,6 +431,16 @@ const styles = StyleSheet.create({
   },
   analyzeBtnText: { color: '#fff', fontWeight: '600' },
   analyzeBtnDisabled: { backgroundColor: '#94A3B8' },
+  actionRow: { flexDirection: 'row', alignItems: 'center' },
+  galleryBtn: {
+    padding: 10,
+    backgroundColor: '#F8FAFF',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E6EEF8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
   tipsCard: {
     backgroundColor: '#c8dcfa',

@@ -3,6 +3,7 @@ import { analyzeQrCode, extractQrCodeFromImage } from '@/services/calls/gemini';
 import { safeBrowsingCheck } from '@/services/calls/safeBrowsing';
 import { setLastQrResult } from '@/services/storage/qrStore';
 import { recordScan } from '@/services/storage/scanHistory';
+import { scanBarcodes } from '@/services/utils/mlKit';
 import { validateAndNormalizeUrl } from '@/services/utils/urlValidator';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -227,9 +228,6 @@ export default function QRScanner() {
     if (validation.isValid) {
       // Valid URL - set normalized version
       setManualUrl(validation.normalizedUrl!);
-
-      // Auto analyze
-      safeBrowsingApi(validation.normalizedUrl!);
     } else {
       // Not a valid URL, but still show the raw data so user can edit it
       setManualUrl(data);
@@ -296,13 +294,25 @@ export default function QRScanner() {
       setLoading(true);
       setLoadingMessage('Processing image...');
 
-      // Use base64 if available, otherwise use URI
+      // Use base64 if available, otherwise use URI (for fallback)
       const imageData = base64Data
         ? `data:image/jpeg;base64,${base64Data}`
         : imageUri;
 
-      setLoadingMessage('Extracting QR code from image...');
-      const qrData = await extractQrCodeFromImage(imageData);
+      setLoadingMessage('Extracting QR code locally with ML Kit...');
+      const mlKitResults = await scanBarcodes(imageUri);
+
+      let qrData: string | null = null;
+
+      if (mlKitResults && mlKitResults.length > 0) {
+        // Use the first detected QR code
+        qrData = mlKitResults[0].value;
+        console.log('ML Kit extraction successful:', qrData);
+      } else {
+        // Fallback to Gemini for complex images
+        setLoadingMessage('Local extraction failed. Attempting with AI engine...');
+        qrData = await extractQrCodeFromImage(imageData);
+      }
 
       if (!qrData) {
         if (isMounted.current) {
@@ -345,19 +355,6 @@ export default function QRScanner() {
       if (isMounted.current) {
         setLoading(false);
       }
-
-      // Optionally auto-analyze the QR code
-      Alert.alert(
-        'QR Code Detected',
-        `Found QR code: ${qrValidation.normalizedUrl!.substring(0, 50)}${qrValidation.normalizedUrl!.length > 50 ? '...' : ''}\n\nWould you like to analyze it now?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Analyze',
-            onPress: () => safeBrowsingApi(qrValidation.normalizedUrl!)
-          }
-        ]
-      );
     } catch (error) {
       console.error('Error scanning image for QR code:', error);
       if (isMounted.current) {
