@@ -186,6 +186,9 @@ export default function AppDetection() {
       // Navigate to result
       router.push("/pages/app_detection/scan_result");
 
+      // Clear the form data after navigation
+      setSelectedApk(null);
+      setAnalysisResult(null);
     } catch (error) {
       console.log("Gemini Analysis Error:", error);
       Alert.alert("Analysis Failed", "Could not complete AI analysis.");
@@ -280,7 +283,7 @@ export default function AppDetection() {
               >
                 {analysisResult.permissions.map((perm, index) => {
                   const shortPerm = perm.split('.').pop();
-                  const isDangerous = ["CAMERA", "RECORD_AUDIO", "READ_SMS", "ACCESS_FINE_LOCATION"].includes(shortPerm || "");
+                  const isDangerous = ["BIND_ACCESSIBILITY_SERVICE","READ_CONTACTS","USE_BIOMETRIC", "BIND_NOTIFICATION_LISTENER_SERVICE","WRITE_EXTERNAL_STORAGE", "READ_EXTERNAL_STORAGE", "RECORD_AUDIO", "READ_SMS", "ACCESS_FINE_LOCATION"].includes(shortPerm || "");
 
                   return (
                     <View key={index} style={[styles.permBadge, isDangerous && styles.dangerBadge]}>
