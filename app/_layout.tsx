@@ -2,7 +2,7 @@ import { AuthProvider } from "@/services/auth/authContext";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { LogBox } from 'react-native';
-import { SecurityProvider } from "../context/SecurityContext";
+import { SecurityProvider } from "../services/calls/SecurityContext";
 
 // Ignore all log notifications
 LogBox.ignoreAllLogs();

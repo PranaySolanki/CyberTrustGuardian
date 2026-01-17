@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useSecurity } from '../../../context/SecurityContext';
+import { useSecurity } from '../../../services/calls/SecurityContext';
 
 export default function DeviceHealth() {
   const router = useRouter();

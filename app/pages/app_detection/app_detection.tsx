@@ -1,4 +1,3 @@
-import { API_BASE_URL } from "@/services/apiConfig";
 import { useAuth } from "@/services/auth/authContext";
 import { analyzeAppSafety } from "@/services/calls/gemini";
 import { setLastAppResult } from "@/services/storage/appStore";
@@ -90,7 +89,7 @@ export default function AppDetection() {
     });
 
     try {
-      const response = await fetch(`${API_BASE_URL}/upload`, {
+      const response = await fetch(`https://cybertrustguardian-server.onrender.com/upload`, {
         method: "POST",
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -159,6 +158,7 @@ export default function AppDetection() {
         analysis: analysis // The Gemini result
       });
 
+      
       // Navigate to result
       router.push("/pages/app_detection/scan_result");
 

@@ -283,9 +283,8 @@ export const analyzeAppSafety = async (appName: string, packageName: string, per
     CONSTRAINTS: 
     - NEVER explain what a permission is.
     - NEVER list safe permissions.
-    - REASON direct in a few sentences sentence (MAX 30 WORDS).
+    - REASON direct in a few sentences sentence (MAX 50 WORDS).
     - FOCUS ONLY ON THE RED FLAGS.
-    dont explain me what permissions are given just the ones which are suspicious point them out.
   `;
 
   const prompt = `
