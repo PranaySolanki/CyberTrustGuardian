@@ -5,13 +5,16 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SignIn() {
   const { signIn, isLoading } = useAuth();
@@ -65,113 +68,120 @@ export default function SignIn() {
   const isFormValid = email.trim() !== '' && password !== '';
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.headerSection}>
-        <Text style={styles.logo}>🛡️</Text>
-        <Text style={styles.title}>Sign In</Text>
-        <Text style={styles.subtitle}>Welcome back to CyberGuardian</Text>
-      </View>
-
-      <View style={styles.formSection}>
-        {apiError && (
-          <View style={styles.errorBanner}>
-            <Text style={styles.errorBannerText}>{apiError}</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFF' }} edges={['top', 'left', 'right']}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView contentContainerStyle={styles.container}>
+          <View style={styles.headerSection}>
+            <Text style={styles.logo}>🛡️</Text>
+            <Text style={styles.title}>Sign In</Text>
+            <Text style={styles.subtitle}>Welcome back to CyberGuardian</Text>
           </View>
-        )}
 
-        {/* Email Input */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Email Address</Text>
-          <TextInput
-            style={[styles.input, fieldErrors.email && styles.inputError]}
-            placeholder="Enter your email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            editable={!isLoading}
-            placeholderTextColor="#A0AEC0"
-          />
-          {fieldErrors.email && (
-            <Text style={styles.errorText}>⚠️ {fieldErrors.email}</Text>
-          )}
-        </View>
+          <View style={styles.formSection}>
+            {apiError && (
+              <View style={styles.errorBanner}>
+                <Text style={styles.errorBannerText}>{apiError}</Text>
+              </View>
+            )}
 
-        {/* Password Input */}
-        <View style={styles.inputGroup}>
-          <View style={styles.labelRow}>
-            <Text style={styles.label}>Password</Text>
-            <TouchableOpacity onPress={() => router.push('/auth/forgot-password')} disabled={isLoading}>
-              <Text style={styles.forgotLink}>Forgot?</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.passwordInputContainer}>
-            <TextInput
-              style={[
-                styles.passwordInput,
-                fieldErrors.password && styles.inputError,
-              ]}
-              placeholder="Enter your password"
-              secureTextEntry={!showPassword}
-              value={password}
-              onChangeText={setPassword}
-              editable={!isLoading}
-              placeholderTextColor="#A0AEC0"
-            />
+            {/* Email Input */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Email Address</Text>
+              <TextInput
+                style={[styles.input, fieldErrors.email && styles.inputError]}
+                placeholder="Enter your email"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                editable={!isLoading}
+                placeholderTextColor="#A0AEC0"
+              />
+              {fieldErrors.email && (
+                <Text style={styles.errorText}>⚠️ {fieldErrors.email}</Text>
+              )}
+            </View>
+
+            {/* Password Input */}
+            <View style={styles.inputGroup}>
+              <View style={styles.labelRow}>
+                <Text style={styles.label}>Password</Text>
+                <TouchableOpacity onPress={() => router.push('/auth/forgot-password')} disabled={isLoading}>
+                  <Text style={styles.forgotLink}>Forgot?</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.passwordInputContainer}>
+                <TextInput
+                  style={[
+                    styles.passwordInput,
+                    fieldErrors.password && styles.inputError,
+                  ]}
+                  placeholder="Enter your password"
+                  secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={setPassword}
+                  editable={!isLoading}
+                  placeholderTextColor="#A0AEC0"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  disabled={isLoading}
+                >
+                  <Text style={styles.eyeIcon}>{showPassword ? '👁️' : '👁️‍🗨️'}</Text>
+                </TouchableOpacity>
+              </View>
+              {fieldErrors.password && (
+                <Text style={styles.errorText}>⚠️ {fieldErrors.password}</Text>
+              )}
+            </View>
+
+            {/* Remember Me */}
+            <View style={styles.rememberMeContainer}>
+              <TouchableOpacity
+                style={styles.checkbox}
+                onPress={() => setRememberMe(!rememberMe)}
+                disabled={isLoading}
+              >
+                <Text style={styles.checkboxText}>{rememberMe ? '☑️' : '☐'}</Text>
+              </TouchableOpacity>
+              <Text style={styles.rememberMeText}>Remember me on this device</Text>
+            </View>
+
+            {/* Sign In Button */}
             <TouchableOpacity
-              onPress={() => setShowPassword(!showPassword)}
+              style={[styles.signInButton, (!isFormValid || isLoading) && styles.buttonDisabled]}
+              onPress={handleSignIn}
               disabled={isLoading}
             >
-              <Text style={styles.eyeIcon}>{showPassword ? '👁️' : '👁️‍🗨️'}</Text>
+              {isLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.signInButtonText}>Sign In</Text>
+              )}
             </TouchableOpacity>
+
+            {/* Security Tips */}
+            <View style={styles.tipsCard}>
+              <Text style={styles.tipsTitle}>🔐 Security Tip</Text>
+              <Text style={styles.tipsText}>
+                Never share your password with anyone. CyberGuardian will never ask for your password via email.
+              </Text>
+            </View>
+
+            {/* Sign Up Link */}
+            <View style={styles.signUpContainer}>
+              <Text style={styles.signUpText}>Don't have an account? </Text>
+              <TouchableOpacity onPress={() => router.push('/auth/sign-up')} disabled={isLoading}>
+                <Text style={styles.signUpLink}>Create one</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          {fieldErrors.password && (
-            <Text style={styles.errorText}>⚠️ {fieldErrors.password}</Text>
-          )}
-        </View>
-
-        {/* Remember Me */}
-        <View style={styles.rememberMeContainer}>
-          <TouchableOpacity
-            style={styles.checkbox}
-            onPress={() => setRememberMe(!rememberMe)}
-            disabled={isLoading}
-          >
-            <Text style={styles.checkboxText}>{rememberMe ? '☑️' : '☐'}</Text>
-          </TouchableOpacity>
-          <Text style={styles.rememberMeText}>Remember me on this device</Text>
-        </View>
-
-        {/* Sign In Button */}
-        <TouchableOpacity
-          style={[styles.signInButton, (!isFormValid || isLoading) && styles.buttonDisabled]}
-          onPress={handleSignIn}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.signInButtonText}>Sign In</Text>
-          )}
-        </TouchableOpacity>
-
-        {/* Security Tips */}
-        <View style={styles.tipsCard}>
-          <Text style={styles.tipsTitle}>🔐 Security Tip</Text>
-          <Text style={styles.tipsText}>
-            Never share your password with anyone. CyberGuardian will never ask for your password via email.
-          </Text>
-        </View>
-
-        {/* Sign Up Link */}
-        <View style={styles.signUpContainer}>
-          <Text style={styles.signUpText}>Don't have an account? </Text>
-          <TouchableOpacity onPress={() => router.push('/auth/sign-up')} disabled={isLoading}>
-            <Text style={styles.signUpLink}>Create one</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 

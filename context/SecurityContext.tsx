@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { ThreatEventActions, removeThreatListener, setThreatListeners, talsecStart } from 'freerasp-react-native';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
@@ -103,6 +104,12 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Manual Talsec Initialization to handle Hot Reload crashes
     useEffect(() => {
         const initTalsec = async () => {
+            // Talsec requires native code not available in Expo Go
+            if (Constants.appOwnership === 'expo') {
+                console.log('Skipping Talsec initialization in Expo Go');
+                return;
+            }
+
             try {
                 await setThreatListeners(actions);
                 const config = getTalsecConfig();

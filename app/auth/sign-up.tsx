@@ -11,13 +11,16 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SignUp() {
   const { signUp, isLoading } = useAuth();
@@ -88,177 +91,184 @@ export default function SignUp() {
     termsAccepted;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.headerSection}>
-        <Text style={styles.logo}>🛡️</Text>
-        <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Join CyberGuardian to protect yourself online</Text>
-      </View>
-
-      <View style={styles.formSection}>
-        {/* Full Name Input */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Full Name</Text>
-          <TextInput
-            style={[styles.input, fieldErrors.fullName && styles.inputError]}
-            placeholder="Enter your full name"
-            value={fullName}
-            onChangeText={setFullName}
-            editable={!isLoading}
-            placeholderTextColor="#A0AEC0"
-          />
-          {fieldErrors.fullName && (
-            <Text style={styles.errorText}>⚠️ {fieldErrors.fullName}</Text>
-          )}
-          {fullNameValidation.isValid && !fieldErrors.fullName && (
-            <Text style={styles.successText}>✓ Valid name</Text>
-          )}
-        </View>
-
-        {/* Email Input */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Email Address</Text>
-          <TextInput
-            style={[styles.input, fieldErrors.email && styles.inputError]}
-            placeholder="Enter your email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            editable={!isLoading}
-            placeholderTextColor="#A0AEC0"
-          />
-          {fieldErrors.email && (
-            <Text style={styles.errorText}>⚠️ {fieldErrors.email}</Text>
-          )}
-          {emailValidation.isValid && !fieldErrors.email && (
-            <Text style={styles.successText}>✓ Valid email</Text>
-          )}
-        </View>
-
-        {/* Password Input */}
-        <View style={styles.inputGroup}>
-          <View style={styles.labelRow}>
-            <Text style={styles.label}>Password</Text>
-            {password && (
-              <Text
-                style={[
-                  styles.strengthBadge,
-                  passwordValidation.strength === 'weak' && styles.strengthWeak,
-                  passwordValidation.strength === 'medium' && styles.strengthMedium,
-                  passwordValidation.strength === 'strong' && styles.strengthStrong,
-                ]}
-              >
-                {passwordValidation.strength.toUpperCase()}
-              </Text>
-            )}
-          </View>
-          <View style={styles.passwordInputContainer}>
-            <TextInput
-              style={[
-                styles.passwordInput,
-                fieldErrors.password && styles.inputError,
-              ]}
-              placeholder="Enter password"
-              secureTextEntry={!showPassword}
-              value={password}
-              onChangeText={setPassword}
-              editable={!isLoading}
-              placeholderTextColor="#A0AEC0"
-            />
-            <TouchableOpacity
-              onPress={() => setShowPassword(!showPassword)}
-              disabled={isLoading}
-            >
-              <Text style={styles.eyeIcon}>{showPassword ? '👁️' : '👁️‍🗨️'}</Text>
-            </TouchableOpacity>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFF' }} edges={['top', 'left', 'right']}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView contentContainerStyle={styles.container}>
+          <View style={styles.headerSection}>
+            <Text style={styles.logo}>🛡️</Text>
+            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.subtitle}>Join CyberGuardian to protect yourself online</Text>
           </View>
 
-          {fieldErrors.password && (
-            <Text style={styles.errorText}>⚠️ {fieldErrors.password}</Text>
-          )}
-          {password && !fieldErrors.password && (
-            <View style={styles.passwordRequirements}>
-              <Text style={styles.requirementText}>✓ At least 8 characters</Text>
-              <Text style={styles.requirementText}>✓ Contains uppercase & lowercase</Text>
-              <Text style={styles.requirementText}>✓ Contains number & special character</Text>
+          <View style={styles.formSection}>
+            {/* Full Name Input */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Full Name</Text>
+              <TextInput
+                style={[styles.input, fieldErrors.fullName && styles.inputError]}
+                placeholder="Enter your full name"
+                value={fullName}
+                onChangeText={setFullName}
+                editable={!isLoading}
+                placeholderTextColor="#A0AEC0"
+              />
+              {fieldErrors.fullName && (
+                <Text style={styles.errorText}>⚠️ {fieldErrors.fullName}</Text>
+              )}
+              {fullNameValidation.isValid && !fieldErrors.fullName && (
+                <Text style={styles.successText}>✓ Valid name</Text>
+              )}
             </View>
-          )}
-        </View>
 
-        {/* Confirm Password Input */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Confirm Password</Text>
-          <View style={styles.passwordInputContainer}>
-            <TextInput
-              style={[
-                styles.passwordInput,
-                fieldErrors.confirmPassword && styles.inputError,
-              ]}
-              placeholder="Re-enter password"
-              secureTextEntry={!showConfirmPassword}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              editable={!isLoading}
-              placeholderTextColor="#A0AEC0"
-            />
+            {/* Email Input */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Email Address</Text>
+              <TextInput
+                style={[styles.input, fieldErrors.email && styles.inputError]}
+                placeholder="Enter your email"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                editable={!isLoading}
+                placeholderTextColor="#A0AEC0"
+              />
+              {fieldErrors.email && (
+                <Text style={styles.errorText}>⚠️ {fieldErrors.email}</Text>
+              )}
+              {emailValidation.isValid && !fieldErrors.email && (
+                <Text style={styles.successText}>✓ Valid email</Text>
+              )}
+            </View>
+
+            {/* Password Input */}
+            <View style={styles.inputGroup}>
+              <View style={styles.labelRow}>
+                <Text style={styles.label}>Password</Text>
+                {password && (
+                  <Text
+                    style={[
+                      styles.strengthBadge,
+                      passwordValidation.strength === 'weak' && styles.strengthWeak,
+                      passwordValidation.strength === 'medium' && styles.strengthMedium,
+                      passwordValidation.strength === 'strong' && styles.strengthStrong,
+                    ]}
+                  >
+                    {passwordValidation.strength.toUpperCase()}
+                  </Text>
+                )}
+              </View>
+              <View style={styles.passwordInputContainer}>
+                <TextInput
+                  style={[
+                    styles.passwordInput,
+                    fieldErrors.password && styles.inputError,
+                  ]}
+                  placeholder="Enter password"
+                  secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={setPassword}
+                  editable={!isLoading}
+                  placeholderTextColor="#A0AEC0"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  disabled={isLoading}
+                >
+                  <Text style={styles.eyeIcon}>{showPassword ? '👁️' : '👁️‍🗨️'}</Text>
+                </TouchableOpacity>
+              </View>
+
+              {fieldErrors.password && (
+                <Text style={styles.errorText}>⚠️ {fieldErrors.password}</Text>
+              )}
+              {password && !fieldErrors.password && (
+                <View style={styles.passwordRequirements}>
+                  <Text style={styles.requirementText}>✓ At least 8 characters</Text>
+                  <Text style={styles.requirementText}>✓ Contains uppercase & lowercase</Text>
+                  <Text style={styles.requirementText}>✓ Contains number & special character</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Confirm Password Input */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Confirm Password</Text>
+              <View style={styles.passwordInputContainer}>
+                <TextInput
+                  style={[
+                    styles.passwordInput,
+                    fieldErrors.confirmPassword && styles.inputError,
+                  ]}
+                  placeholder="Re-enter password"
+                  secureTextEntry={!showConfirmPassword}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  editable={!isLoading}
+                  placeholderTextColor="#A0AEC0"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  disabled={isLoading}
+                >
+                  <Text style={styles.eyeIcon}>{showConfirmPassword ? '👁️' : '👁️‍🗨️'}</Text>
+                </TouchableOpacity>
+              </View>
+              {fieldErrors.confirmPassword && (
+                <Text style={styles.errorText}>⚠️ {fieldErrors.confirmPassword}</Text>
+              )}
+              {confirmPassword && !fieldErrors.confirmPassword && (
+                <Text style={styles.successText}>✓ Passwords match</Text>
+              )}
+            </View>
+
+            {/* Terms & Conditions */}
+            <View style={styles.termsContainer}>
+              <TouchableOpacity
+                style={styles.checkbox}
+                onPress={() => setTermsAccepted(!termsAccepted)}
+                disabled={isLoading}
+              >
+                <Text style={styles.checkboxText}>{termsAccepted ? '☑️' : '☐'}</Text>
+              </TouchableOpacity>
+              <View style={styles.termsTextContainer}>
+                <Text style={styles.termsText}>I agree to the </Text>
+                <Text style={[styles.termsText, styles.termsLink]}>Terms of Service</Text>
+                <Text style={styles.termsText}> and </Text>
+                <Text style={[styles.termsText, styles.termsLink]}>Privacy Policy</Text>
+              </View>
+            </View>
+            {fieldErrors.terms && (
+              <Text style={styles.errorText}>⚠️ {fieldErrors.terms}</Text>
+            )}
+
+            {/* Sign Up Button */}
             <TouchableOpacity
-              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+              style={[styles.signUpButton, (!isFormValid || isLoading) && styles.buttonDisabled]}
+              onPress={handleSignUp}
               disabled={isLoading}
             >
-              <Text style={styles.eyeIcon}>{showConfirmPassword ? '👁️' : '👁️‍🗨️'}</Text>
+              {isLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.signUpButtonText}>Create Account</Text>
+              )}
             </TouchableOpacity>
+
+            {/* Sign In Link */}
+            <View style={styles.signInContainer}>
+              <Text style={styles.signInText}>Already have an account? </Text>
+              <TouchableOpacity onPress={() => router.push('/auth/sign-in')} disabled={isLoading}>
+                <Text style={styles.signInLink}>Sign In</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          {fieldErrors.confirmPassword && (
-            <Text style={styles.errorText}>⚠️ {fieldErrors.confirmPassword}</Text>
-          )}
-          {confirmPassword && !fieldErrors.confirmPassword && (
-            <Text style={styles.successText}>✓ Passwords match</Text>
-          )}
-        </View>
-
-        {/* Terms & Conditions */}
-        <View style={styles.termsContainer}>
-          <TouchableOpacity
-            style={styles.checkbox}
-            onPress={() => setTermsAccepted(!termsAccepted)}
-            disabled={isLoading}
-          >
-            <Text style={styles.checkboxText}>{termsAccepted ? '☑️' : '☐'}</Text>
-          </TouchableOpacity>
-          <View style={styles.termsTextContainer}>
-            <Text style={styles.termsText}>I agree to the </Text>
-            <Text style={[styles.termsText, styles.termsLink]}>Terms of Service</Text>
-            <Text style={styles.termsText}> and </Text>
-            <Text style={[styles.termsText, styles.termsLink]}>Privacy Policy</Text>
-          </View>
-        </View>
-        {fieldErrors.terms && (
-          <Text style={styles.errorText}>⚠️ {fieldErrors.terms}</Text>
-        )}
-
-        {/* Sign Up Button */}
-        <TouchableOpacity
-          style={[styles.signUpButton, (!isFormValid || isLoading) && styles.buttonDisabled]}
-          onPress={handleSignUp}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.signUpButtonText}>Create Account</Text>
-          )}
-        </TouchableOpacity>
-
-        {/* Sign In Link */}
-        <View style={styles.signInContainer}>
-          <Text style={styles.signInText}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => router.push('/auth/sign-in')} disabled={isLoading}>
-            <Text style={styles.signInLink}>Sign In</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -428,6 +438,7 @@ const styles = StyleSheet.create({
   signInContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
+    marginBottom : 35,
     alignItems: 'center',
   },
   signInText: {

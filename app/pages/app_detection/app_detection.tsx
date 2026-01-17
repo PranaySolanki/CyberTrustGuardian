@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/services/apiConfig";
 import { useAuth } from "@/services/auth/authContext";
 import { analyzeAppSafety } from "@/services/calls/gemini";
 import { setLastAppResult } from "@/services/storage/appStore";
@@ -15,7 +16,6 @@ import {
   View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { API_BASE_URL } from "./config";
 
 type AppItem = {
   id: string;
