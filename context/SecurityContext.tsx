@@ -1,7 +1,7 @@
 import { ThreatEventActions, removeThreatListener, setThreatListeners, talsecStart } from 'freerasp-react-native';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
-// Define the Talsec configuration as a factory to ensure fresh arrays/objects on every init
+// Define the Talsec configuration as a factory to ensure fresh arrays/objects on every init 
 const getTalsecConfig = () => ({
     androidConfig: {
         packageName: 'com.cyberguardian.app',

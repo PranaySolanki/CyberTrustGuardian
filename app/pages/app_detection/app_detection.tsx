@@ -1,4 +1,6 @@
 import { useAuth } from "@/services/auth/authContext";
+import { analyzeAppSafety } from "@/services/calls/gemini";
+import { setLastAppResult } from "@/services/storage/appStore";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { useRouter } from "expo-router";
@@ -12,6 +14,7 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { API_BASE_URL } from "./config";
 
 type AppItem = {
@@ -39,6 +42,28 @@ export default function AppDetection() {
   const router = useRouter();
 
   const handleScan = () => {
+    // Mock data for "Flashlight Pro" to demonstrate high risk
+    const mockData = {
+      package_name: "com.super.flashlight.pro.free",
+      permissions: [
+        "android.permission.CAMERA",
+        "android.permission.READ_CONTACTS",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.INTERNET"
+      ],
+      appName: "Flashlight Pro",
+      analysis: {
+        risk: "HIGH",
+        score: 12,
+        reason: "Excessive permissions detected: Contacts and Location are irrelevant for a flashlight app. Likely spyware.",
+        official_comparison: "Unknown App"
+      }
+    };
+
+    // Store in global state
+    // @ts-ignore
+    setLastAppResult(mockData);
+
     router.push("/pages/app_detection/scan_result");
   };
 
@@ -47,7 +72,7 @@ export default function AppDetection() {
     permissions: string[];
   } | null>(null);
 
-  const apkHandleScan = async (asset?: DocumentPicker.DocumentPickerAsset | any) => {
+  const apkLoadPermissions = async (asset?: DocumentPicker.DocumentPickerAsset | any) => {
     const isAsset = asset && asset.uri;
     const targetApk = isAsset ? asset : selectedApk;
 
@@ -89,6 +114,7 @@ export default function AppDetection() {
     } finally {
       setIsScanning(false);
     }
+
   };
 
   const pickApk = async () => {
@@ -100,10 +126,47 @@ export default function AppDetection() {
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
         setSelectedApk(asset);
-        await apkHandleScan(asset);
+        await apkLoadPermissions(asset);
       }
     } catch (error) {
       console.log("APK selection error:", error);
+    }
+  };
+
+
+  const apkHandleScan = async () => {
+    if (!selectedApk || !analysisResult) {
+      Alert.alert("No Data", "Please select an APK first.");
+      return;
+    }
+
+    try {
+      setIsScanning(true);
+      const appName = selectedApk.name || "Unknown App";
+
+      const analysis = await analyzeAppSafety(
+        appName,
+        analysisResult.package_name,
+        analysisResult.permissions
+      );
+
+      // Store in global state
+      // @ts-ignore
+      setLastAppResult({
+        ...analysisResult, // permissions, package_name, etc.
+        appName: appName,
+        // @ts-ignore
+        analysis: analysis // The Gemini result
+      });
+
+      // Navigate to result
+      router.push("/pages/app_detection/scan_result");
+
+    } catch (error) {
+      console.log("Gemini Analysis Error:", error);
+      Alert.alert("Analysis Failed", "Could not complete AI analysis.");
+    } finally {
+      setIsScanning(false);
     }
   };
 
@@ -124,98 +187,104 @@ export default function AppDetection() {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <Text style={styles.title}>App Permission Analyzer</Text>
-      <Text style={styles.subtitle}>
-        Identify apps with excessive permissions
-      </Text>
-
-      {/* ✅ APK SELECTOR BLOCK */}
-      <View style={styles.apkBlock}>
-        <View style={styles.apkTextBox}>
-          <Text style={styles.apkText}>
-            {selectedApk ? selectedApk.name : "No APK Selected"}
-          </Text>
+    <SafeAreaView style={styles.container}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Standard Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+            <Ionicons name="arrow-back" size={24} color="#1E293B" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>App Analyzer</Text>
+          <View style={{ width: 40 }} />
         </View>
 
-        <TouchableOpacity
-          style={[styles.apkButton, isScanning && { opacity: 0.7 }]}
-          onPress={pickApk}
-          disabled={isScanning}
-        >
-          {isScanning ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Text style={styles.apkButtonText}>
-              {selectedApk ? "Change APK" : "Select APK"}
+        {/* ✅ APK SELECTOR BLOCK */}
+        <View style={styles.apkBlock}>
+          <View style={styles.apkTextBox}>
+            <Text style={styles.apkText}>
+              {selectedApk ? selectedApk.name : "No APK Selected"}
             </Text>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {/* ✅ SCAN BUTTON */}
-      {selectedApk && (
-        <TouchableOpacity style={styles.scanApkButton} onPress={handleScan} disabled={isScanning}>
-          {isScanning ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <>
-              <Ionicons name="shield-checkmark" size={20} color="#FFFFFF" />
-              <Text style={styles.scanApkButtonText}>Scan Selected APK</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      )}
-
-      {/* --- SCROLLABLE PERMISSIONS DISPLAY SECTION --- */}
-      {analysisResult && (
-        <View style={styles.resultContainer}>
-          <View style={styles.resultHeader}>
-            <Ionicons name="apps" size={20} color="#2563EB" />
-            <Text style={styles.resultPkgName}>{analysisResult.package_name}</Text>
           </View>
 
-          <Text style={styles.permissionTitle}>
-            Requested Permissions ({analysisResult.permissions.length})
-          </Text>
-
-          {/* Nested ScrollView for permissions */}
-          <View style={styles.scrollArea}>
-            <ScrollView
-              nestedScrollEnabled={true}
-              contentContainerStyle={styles.permissionList}
-              showsVerticalScrollIndicator={true}
-            >
-              {analysisResult.permissions.map((perm, index) => {
-                const shortPerm = perm.split('.').pop();
-                const isDangerous = ["CAMERA", "RECORD_AUDIO", "READ_SMS", "ACCESS_FINE_LOCATION"].includes(shortPerm || "");
-
-                return (
-                  <View key={index} style={[styles.permBadge, isDangerous && styles.dangerBadge]}>
-                    <Text style={[styles.permText, isDangerous && styles.dangerText]}>
-                      {shortPerm}
-                    </Text>
-                    {isDangerous && <Ionicons name="alert-circle" size={12} color="#DC2626" style={{ marginLeft: 4 }} />}
-                  </View>
-                );
-              })}
-            </ScrollView>
-          </View>
+          <TouchableOpacity
+            style={[styles.apkButton, isScanning && { opacity: 0.7 }]}
+            onPress={pickApk}
+            disabled={isScanning}
+          >
+            {isScanning ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.apkButtonText}>
+                {selectedApk ? "Change APK" : "Select APK"}
+              </Text>
+            )}
+          </TouchableOpacity>
         </View>
-      )}
 
-      {/* ✅ APP LIST - Note: Changed to map since we are inside a ScrollView */}
-      <View style={{ marginTop: 10 }}>
-        {mockApps.map((item) => (
-          <View key={item.id}>
-            {renderItem({ item })}
+        {/* ✅ SCAN BUTTON */}
+        {selectedApk && (
+          <TouchableOpacity style={styles.scanApkButton} onPress={apkHandleScan} disabled={isScanning}>
+            {isScanning ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <Ionicons name="shield-checkmark" size={20} color="#FFFFFF" />
+                <Text style={styles.scanApkButtonText}>Scan Selected APK</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
+
+        {/* --- SCROLLABLE PERMISSIONS DISPLAY SECTION --- */}
+        {analysisResult && (
+          <View style={styles.resultContainer}>
+            <View style={styles.resultHeader}>
+              <Ionicons name="apps" size={20} color="#2563EB" />
+              <Text style={styles.resultPkgName}>{analysisResult.package_name}</Text>
+            </View>
+
+            <Text style={styles.permissionTitle}>
+              Requested Permissions ({analysisResult.permissions.length})
+            </Text>
+
+            {/* Nested ScrollView for permissions */}
+            <View style={styles.scrollArea}>
+              <ScrollView
+                nestedScrollEnabled={true}
+                contentContainerStyle={styles.permissionList}
+                showsVerticalScrollIndicator={true}
+              >
+                {analysisResult.permissions.map((perm, index) => {
+                  const shortPerm = perm.split('.').pop();
+                  const isDangerous = ["CAMERA", "RECORD_AUDIO", "READ_SMS", "ACCESS_FINE_LOCATION"].includes(shortPerm || "");
+
+                  return (
+                    <View key={index} style={[styles.permBadge, isDangerous && styles.dangerBadge]}>
+                      <Text style={[styles.permText, isDangerous && styles.dangerText]}>
+                        {shortPerm}
+                      </Text>
+                      {isDangerous && <Ionicons name="alert-circle" size={12} color="#DC2626" style={{ marginLeft: 4 }} />}
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            </View>
           </View>
-        ))}
-      </View>
+        )}
 
-      {/* Spacer for bottom padding */}
-      <View style={{ height: 40 }} />
-    </ScrollView>
+        {/* ✅ APP LIST - Note: Changed to map since we are inside a ScrollView */}
+        <View style={{ marginTop: 10 }}>
+          {mockApps.map((item) => (
+            <View key={item.id}>
+              {renderItem({ item })}
+            </View>
+          ))}
+        </View>
+
+        {/* Spacer for bottom padding */}
+        <View style={{ height: 40 }} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -226,19 +295,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#0F172A",
-  },
-  subtitle: {
-    color: "#475569",
-    marginBottom: 12,
-  },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
+  headerTitle: { fontSize: 18, fontWeight: "700", color: "#0F172A", letterSpacing: 0.5 },
+  iconBtn: { padding: 8, backgroundColor: "#FFF", borderRadius: 12, borderWidth: 1, borderColor: "#E2E8F0" },
   apkBlock: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 18,
   },
   apkTextBox: {
     flex: 1,

@@ -20,6 +20,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function QRScanner() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -445,11 +446,15 @@ export default function QRScanner() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.content}>
+        {/* Standard Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>QR Safety Scanner</Text>
-          <Text style={styles.headerSubtitle}>Scan codes securely before visiting</Text>
+          <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+            <Ionicons name="arrow-back" size={24} color="#1E293B" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>QR Scanner</Text>
+          <View style={{ width: 40 }} />
         </View>
 
         <View style={styles.cameraSection}>
@@ -545,7 +550,7 @@ export default function QRScanner() {
           </Text>
         </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -556,7 +561,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 20,
+    padding: 16,
     justifyContent: 'space-between',
     backgroundColor: '#F8FAFF',
   },
@@ -629,16 +634,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  header: {
-    marginBottom: 30,
-    marginTop: 10,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 6,
-  },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
+  headerTitle: { fontSize: 18, fontWeight: "700", color: "#0F172A", letterSpacing: 0.5 },
+  iconBtn: { padding: 8, backgroundColor: "#FFF", borderRadius: 12, borderWidth: 1, borderColor: "#E2E8F0" },
   headerSubtitle: {
     fontSize: 14,
     color: '#6B7280',

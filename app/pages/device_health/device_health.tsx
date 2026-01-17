@@ -1,10 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Device from 'expo-device';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSecurity } from '../../../context/SecurityContext';
 
 export default function DeviceHealth() {
+  const router = useRouter();
   const { securityState } = useSecurity();
   const [loading, setLoading] = useState(true);
 
@@ -60,64 +63,74 @@ export default function DeviceHealth() {
   );
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={<RefreshControl refreshing={loading} onRefresh={runChecks} />}
-    >
-      {/* Risk Banner */}
-      <View style={[styles.banner, isSafe ? styles.bgGreen : styles.bgRed]}>
-        <Ionicons name={isSafe ? "shield-checkmark" : "alert-circle"} size={64} color="#FFF" />
-        <Text style={styles.bannerTitle}>{isSafe ? "System Secure" : "Security Risk Detected"}</Text>
-        <Text style={styles.bannerSub}>
-          {isSafe ? "No root access or anomalies found." : "Your device environment is compromised."}
-        </Text>
-      </View>
-
-      {/* Detailed Diagnostics */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Security Checks</Text>
-
-        <View style={styles.card}>
-          <HealthItem
-            label="Root Access (SU Binaries)"
-            value={isRooted ? "Detected" : "Not Found"}
-            safe={!isRooted}
-            icon="key"
-          />
-          <HealthItem
-            label="Build Signature (Test Keys/Tampering)"
-            value={isTampered ? "Anomalies Found" : "Official Build"}
-            safe={!isTampered}
-            icon="finger-print"
-          />
-          <HealthItem
-            label="Environment"
-            value={isEmulator ? "Emulator" : "Physical Device"}
-            safe={!isEmulator}
-            icon="hardware-chip"
-          />
+    <SafeAreaView style={styles.container}>
+      <ScrollView
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={runChecks} />}
+      >
+        {/* Standard Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+            <Ionicons name="arrow-back" size={24} color="#1E293B" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Device Health</Text>
+          <View style={{ width: 40 }} />
         </View>
-      </View>
 
-      {/* Recommendation Section */}
-      {!isSafe && (
+        {/* Risk Banner */}
+        <View style={[styles.banner, isSafe ? styles.bgGreen : styles.bgRed]}>
+          <Ionicons name={isSafe ? "shield-checkmark" : "alert-circle"} size={64} color="#FFF" />
+          <Text style={styles.bannerTitle}>{isSafe ? "System Secure" : "Security Risk Detected"}</Text>
+          <Text style={styles.bannerSub}>
+            {isSafe ? "No root access or anomalies found." : "Your device environment is compromised."}
+          </Text>
+        </View>
+
+        {/* Detailed Diagnostics */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recommendations</Text>
-          <View style={[styles.card, styles.warningCard]}>
-            <Text style={styles.warningText}>
-              • Rooted devices are vulnerable to data theft.
-            </Text>
-            <Text style={styles.warningText}>
-              • Emulators may not accurately reflect real-world security.
-            </Text>
-            <Text style={styles.warningText}>
-              • Tampered apps or test keys indicate a compromised version.
-            </Text>
+          <Text style={styles.sectionTitle}>Security Checks</Text>
+
+          <View style={styles.card}>
+            <HealthItem
+              label="Root Access (SU Binaries)"
+              value={isRooted ? "Detected" : "Not Found"}
+              safe={!isRooted}
+              icon="key"
+            />
+            <HealthItem
+              label="Build Signature (Test Keys/Tampering)"
+              value={isTampered ? "Anomalies Found" : "Official Build"}
+              safe={!isTampered}
+              icon="finger-print"
+            />
+            <HealthItem
+              label="Environment"
+              value={isEmulator ? "Emulator" : "Physical Device"}
+              safe={!isEmulator}
+              icon="hardware-chip"
+            />
           </View>
         </View>
-      )}
 
-    </ScrollView>
+        {/* Recommendation Section */}
+        {!isSafe && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Recommendations</Text>
+            <View style={[styles.card, styles.warningCard]}>
+              <Text style={styles.warningText}>
+                • Rooted devices are vulnerable to data theft.
+              </Text>
+              <Text style={styles.warningText}>
+                • Emulators may not accurately reflect real-world security.
+              </Text>
+              <Text style={styles.warningText}>
+                • Tampered apps or test keys indicate a compromised version.
+              </Text>
+            </View>
+          </View>
+        )}
+
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -149,6 +162,9 @@ const HealthItem = ({ label, value, safe, icon }: HealthItemProps) => (
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFF' },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, marginBottom: 20 },
+  headerTitle: { fontSize: 18, fontWeight: "700", color: "#0F172A", letterSpacing: 0.5 },
+  iconBtn: { padding: 8, backgroundColor: "#FFF", borderRadius: 12, borderWidth: 1, borderColor: "#E2E8F0" },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFF' },
   loadingText: { marginTop: 12, color: '#64748B', fontSize: 16 },
 
