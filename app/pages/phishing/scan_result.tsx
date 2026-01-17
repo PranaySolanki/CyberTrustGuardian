@@ -7,7 +7,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function PhishingScanResult() {
   const params = useLocalSearchParams()
-  const [data, setData] = useState<{ risk?: string; score?: number; reason?: string; content?: string } | null>(null)
+  const [data, setData] = useState<{
+    risk?: string;
+    score?: number;
+    reason?: string;
+    content?: string;
+    safeBrowsingResult?: string;
+    geminiResult?: string;
+  } | null>(null)
 
   useEffect(() => {
     // Strictly load from store as requested

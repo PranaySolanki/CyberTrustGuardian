@@ -1,10 +1,14 @@
 import { useAuth } from '@/services/auth/authContext'
 import { analyzePhisingAttempt } from '@/services/calls/gemini'
+import { safeBrowsingCheck } from '@/services/calls/safeBrowsing'
+import { db } from '@/services/firebase/firebase'
 import { setLastPhishingResult } from '@/services/storage/phishingStore'
 import { recordScan } from '@/services/storage/scanHistory'
 import { Ionicons } from '@expo/vector-icons'
+import { validateAndNormalizeUrl } from '@/services/utils/urlValidator'
 import { router } from 'expo-router'
-import React, { useState } from 'react'
+import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore'
+import React, { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Dimensions,
@@ -29,22 +33,8 @@ type Scan = {
   score: number // 0-100
 }
 
-const initialScans: Scan[] = [
-  {
-    id: '1',
-    title: 'Your account has been suspended. Click here to verify...',
-    time: '16:32',
-    risk: 'HIGH',
-    score: 10,
-  },
-  {
-    id: '2',
-    title: 'Win a free gift card now — confirm details',
-    time: '15:05',
-    risk: 'MEDIUM',
-    score: 45,
-  },
-]
+// Initial state for scans is empty
+const initialScans: any[] = []
 
 type PhishingHeaderProps = {
   activeTab: Tab
@@ -121,8 +111,48 @@ export default function Phishing() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('Email')
   const [text, setText] = useState('')
-  const [scans, setScans] = useState<Scan[]>(initialScans)
+  const [scans, setScans] = useState<any[]>(initialScans)
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+
+    // Listen to History (Fetch recent and filter client-side to avoid index issues)
+    const historyRef = collection(db, 'users', user.id, 'history');
+    const q = query(
+      historyRef,
+      orderBy('timestamp', 'desc'),
+      limit(20)
+    );
+
+    const unsub = onSnapshot(q, (snapshot) => {
+      const historyData = snapshot.docs
+        .map(d => ({
+          id: d.id,
+          ...d.data(),
+          // Format timestamp for display
+          time: d.data().timestamp?.toDate
+            ? d.data().timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : 'Just now'
+        }))
+        .filter((s: any) => ['Email', 'SMS', 'URL'].includes(s.type));
+      setScans(historyData);
+    });
+
+    return () => unsub();
+  }, [user]);
+
+  const handleRecentPress = (scan: any) => {
+    // Navigate to scan_result with parameters
+    const params = { ...scan };
+    if (scan.timestamp?.toDate) {
+      params.timestamp = scan.timestamp.toDate().toISOString();
+    }
+    router.push({
+      pathname: '/pages/phishing/scan_result',
+      params
+    });
+  };
 
   const analyze = async () => {
     if (!text.trim()) {
@@ -130,31 +160,94 @@ export default function Phishing() {
       alert(emptyInputAlert)
       return
     }
+
+    let urlToAnalyze = text.trim();
+    if (activeTab === 'URL') {
+      const validation = validateAndNormalizeUrl(urlToAnalyze);
+      if (!validation.isValid) {
+        alert(validation.error || 'Please enter a valid URL.');
+        return;
+      }
+      urlToAnalyze = validation.normalizedUrl!;
+    }
+
     setLoading(true);
     try {
-      const analysis = await analyzePhisingAttempt(text, activeTab.toUpperCase() as any);
+      // Run analysis
+      let analysis: any;
+      let sbResult: any = null;
+
+      if (activeTab === 'URL') {
+        // Run both in parallel for URLs
+        const [geminiRes, sbRes] = await Promise.allSettled([
+          analyzePhisingAttempt(urlToAnalyze, 'URL'),
+          safeBrowsingCheck(urlToAnalyze)
+        ]);
+
+        if (geminiRes.status === 'fulfilled') {
+          analysis = geminiRes.value;
+        } else {
+          console.error('Gemini analysis failed:', geminiRes.reason);
+          analysis = { risk: 'UNKNOWN', score: 0, reason: 'AI analysis unavailable.' };
+        }
+
+        if (sbRes.status === 'fulfilled') {
+          sbResult = sbRes.value;
+        }
+      } else {
+        // Just Gemini for Email/SMS
+        analysis = await analyzePhisingAttempt(text, activeTab.toUpperCase() as any);
+      }
+
       setLoading(false);
       setText('');
-      // Store result in memory (avoid sending potentially sensitive data as URL params)
-      setLastPhishingResult({ risk: analysis.risk, score: analysis.score, reason: analysis.reason, content: text.slice(0, 200) + '...' })
+
+      // Combine Results if URL
+      let finalRisk = analysis.risk;
+      let finalScore = analysis.score;
+      let finalReason = analysis.reason;
+      let safeBrowsingText = 'Not checked';
+
+      if (activeTab === 'URL') {
+        if (sbResult && sbResult.matches && sbResult.matches.length > 0) {
+          finalRisk = 'HIGH';
+          finalScore = Math.min(finalScore, 10);
+          const threats = sbResult.matches.map((m: any) => m.threatType).join(', ');
+          finalReason = `WARNING: Google Safe Browsing detected threats (${threats}). ` + finalReason;
+          safeBrowsingText = `⚠️ THREATS DETECTED: ${threats}`;
+        } else if (sbResult === null) {
+          safeBrowsingText = 'API key not configured - check skipped';
+        } else {
+          safeBrowsingText = '✓ No threats detected';
+        }
+      } else {
+        // No Safe Browsing for Email/SMS
+        safeBrowsingText = '';
+      }
+
+      const resultData = {
+        risk: finalRisk,
+        score: finalScore,
+        reason: finalReason,
+        content: urlToAnalyze.slice(0, 200) + (urlToAnalyze.length > 200 ? '...' : ''),
+        safeBrowsingResult: safeBrowsingText,
+        geminiResult: analysis.reason
+      };
+
+      // Store result in memory
+      setLastPhishingResult(resultData);
 
       // Record scan
       if (user) {
-        const status = analysis.risk === 'HIGH' ? 'Dangerous' : analysis.risk === 'MEDIUM' ? 'Suspicious' : 'Safe';
-        recordScan(user.id, activeTab === 'URL' ? 'URL' : activeTab === 'SMS' ? 'SMS' : 'Email', status, text.slice(0, 30), {
-          risk: analysis.risk,
-          score: analysis.score,
-          reason: analysis.reason,
-          content: text.slice(0, 200) + '...'
-        });
+        const status = finalRisk === 'HIGH' ? 'Dangerous' : finalRisk === 'MEDIUM' ? 'Suspicious' : 'Safe';
+        recordScan(user.id, activeTab === 'URL' ? 'URL' : activeTab === 'SMS' ? 'SMS' : 'Email', status, urlToAnalyze.slice(0, 30), resultData);
       }
 
       router.push({ pathname: '/pages/phishing/scan_result' })
     } catch (error) {
-
       setLoading(false);
-      const errorMessage = error;
-      alert(errorMessage);
+      console.error('Analysis error:', error);
+      alert('An error occurred during analysis. Please try again.');
     }
   }
 
@@ -170,19 +263,19 @@ export default function Phishing() {
 
 
 
-  const ScanHistory = ({ item }: { item: Scan }) => {
+  const ScanHistory = ({ item }: { item: any }) => {
     const riskColor = item.risk === 'HIGH' ? '#FF4D4F' : item.risk === 'MEDIUM' ? '#FFA940' : '#2ECC71'
     return (
-      <View style={styles.scanItem}>
+      <TouchableOpacity style={styles.scanItem} onPress={() => handleRecentPress(item)}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.scanTitle}>{item.title}</Text>
+          <Text style={styles.scanTitle} numberOfLines={1}>{item.details || item.content || 'Scan'}</Text>
           <Text style={styles.scanTime}>{item.time}</Text>
         </View>
         <View style={styles.scanMeta}>
           <Text style={[styles.riskBadge, { borderColor: riskColor, color: riskColor }]}>{item.risk}</Text>
           <Text style={[styles.score, { color: riskColor }]}>{item.score}%</Text>
         </View>
-      </View>
+      </TouchableOpacity>
     )
   }
 
