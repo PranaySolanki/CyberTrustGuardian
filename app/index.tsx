@@ -52,7 +52,13 @@ export default function Index() {
     const userUnsub = onSnapshot(doc(db, 'users', user.id), (doc) => {
       if (doc.exists()) {
         const data = doc.data();
-        setStats(data.stats || { scansToday: 0, threatsBlocked: 0, appsAnalyzed: 0, safetyScore: 100 });
+        const s = data.stats || {};
+        setStats({
+          scansToday: s.scansToday || 0,
+          threatsBlocked: s.threatsBlocked || 0,
+          appsAnalyzed: s.appsAnalyzed || 0,
+          safetyScore: s.safetyScore !== undefined ? s.safetyScore : 100
+        });
       }
     });
 
@@ -110,6 +116,10 @@ export default function Index() {
       pathname = "/pages/phishing/scan_result";
     } else if (scan.type === "Breach") {
       pathname = "/pages/breach_check/breach_result";
+    } else if (scan.type === "System") {
+      pathname = "/pages/device_health/device_health";
+    } else if (scan.type === "App") {
+      pathname = "/pages/app_detection/scan_result";
     }
 
     if (pathname) {
@@ -152,15 +162,27 @@ export default function Index() {
           </View>
         )}
 
-        <View style={styles.statusCard}>
+        <View style={[
+          styles.statusCard,
+          stats.safetyScore < 50 && { backgroundColor: '#DC2626' },
+          stats.safetyScore >= 50 && stats.safetyScore < 80 && { backgroundColor: '#F59E0B' }
+        ]}>
           <View style={styles.statusContent}>
-            <Text style={styles.statusTitle}>System Secure</Text>
+            <Text style={styles.statusTitle}>
+              {stats.safetyScore < 50 ? 'System At Risk' : stats.safetyScore < 80 ? 'System Warning' : 'System Secure'}
+            </Text>
             <Text style={styles.statusSubtitle}>
-              Your device is protected. {stats.threatsBlocked} threats blocked.
+              {stats.safetyScore < 50
+                ? 'Critical security threats detected.'
+                : stats.safetyScore < 80
+                  ? 'Some security concerns found.'
+                  : `Your device is protected. ${stats.threatsBlocked} threats blocked.`}
             </Text>
           </View>
-          <View style={styles.riskPill}>
-            <Text style={styles.riskText} numberOfLines={1}>Low Risk</Text>
+          <View style={[styles.riskPill, stats.safetyScore < 50 && { backgroundColor: 'rgba(255,255,255,0.3)' }]}>
+            <Text style={styles.riskText} numberOfLines={1}>
+              {stats.safetyScore < 50 ? 'High Risk' : stats.safetyScore < 80 ? 'Medium Risk' : 'Low Risk'}
+            </Text>
           </View>
         </View>
 
@@ -172,9 +194,11 @@ export default function Index() {
             <Text style={styles.activityNumber}>{stats.scansToday}</Text>
             <Text style={styles.activityLabel}>Scans Today</Text>
           </View>
-          <View style={styles.activityCard}>
-            <Text style={styles.activityIcon}>⚠️</Text>
-            <Text style={styles.activityNumber}>{stats.threatsBlocked}</Text>
+          <View style={[styles.activityCard, stats.threatsBlocked > 0 && { borderColor: '#FDE68A', backgroundColor: '#FFFDF5' }]}>
+            <Text style={styles.activityIcon}>{stats.threatsBlocked > 0 ? '🛡️' : '⚠️'}</Text>
+            <Text style={[styles.activityNumber, stats.threatsBlocked > 0 && { color: '#D97706' }]}>
+              {stats.threatsBlocked}
+            </Text>
             <Text style={styles.activityLabel}>Threats Blocked</Text>
           </View>
           <View style={styles.activityCard}>
@@ -182,9 +206,16 @@ export default function Index() {
             <Text style={styles.activityNumber}>{stats.appsAnalyzed}</Text>
             <Text style={styles.activityLabel}>Apps Analyzed</Text>
           </View>
-          <View style={styles.activityCard}>
-            <Text style={styles.activityIcon}>✔️</Text>
-            <Text style={styles.activityNumber}>{stats.safetyScore}%</Text>
+          <View style={[styles.activityCard, stats.safetyScore < 50 && { borderColor: '#FECACA', backgroundColor: '#FEF2F2' }, stats.safetyScore >= 50 && stats.safetyScore < 80 && { borderColor: '#FDE68A', backgroundColor: '#FFFDF5' }]}>
+            <Text style={styles.activityIcon}>
+              {stats.safetyScore < 50 ? '🆘' : stats.safetyScore < 80 ? '⚠️' : '✔️'}
+            </Text>
+            <Text style={[
+              styles.activityNumber,
+              stats.safetyScore < 50 ? { color: '#DC2626' } : stats.safetyScore < 80 ? { color: '#D97706' } : { color: '#059669' }
+            ]}>
+              {stats.safetyScore}%
+            </Text>
             <Text style={styles.activityLabel}>Safety Score</Text>
           </View>
         </View>

@@ -43,7 +43,7 @@ export default function ForgotPassword() {
           [
             {
               text: 'Back to Sign In',
-              onPress: () => router.push('/(auth)/sign-in'),
+              onPress: () => router.push('/auth/sign-in'),
             },
           ]
         );
@@ -102,7 +102,7 @@ export default function ForgotPassword() {
 
           {/* Back to Sign In */}
           <View style={styles.backContainer}>
-            <TouchableOpacity onPress={() => router.push('/(auth)/sign-in')} disabled={isLoading}>
+            <TouchableOpacity onPress={() => router.push('/auth/sign-in')} disabled={isLoading}>
               <Text style={styles.backLink}>← Back to Sign In</Text>
             </TouchableOpacity>
           </View>
@@ -128,7 +128,7 @@ export default function ForgotPassword() {
 
           <TouchableOpacity
             style={styles.backToSignInButton}
-            onPress={() => router.push('/(auth)/sign-in')}
+            onPress={() => router.push('/auth/sign-in')}
           >
             <Text style={styles.backToSignInButtonText}>Back to Sign In</Text>
           </TouchableOpacity>
