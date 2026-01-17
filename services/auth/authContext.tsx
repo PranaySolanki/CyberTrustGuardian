@@ -1,4 +1,4 @@
-import { auth, db } from '@/services/calls/firebase';
+import { auth, db } from '@/services/firebase/firebase';
 import {
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,

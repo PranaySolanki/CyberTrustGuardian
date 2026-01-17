@@ -1,8 +1,8 @@
 import { useAuth } from '@/services/auth/authContext';
 import { analyzeQrCode, extractQrCodeFromImage } from '@/services/calls/gemini';
 import { safeBrowsingCheck } from '@/services/calls/safeBrowsing';
-import { recordScan } from '@/services/scanHistory';
 import { setLastQrResult } from '@/services/storage/qrStore';
+import { recordScan } from '@/services/storage/scanHistory';
 import { validateAndNormalizeUrl } from '@/services/utils/urlValidator';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';

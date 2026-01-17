@@ -1,5 +1,5 @@
 import { useAuth } from "@/services/auth/authContext";
-import { db } from "@/services/calls/firebase";
+import { db } from "@/services/firebase/firebase";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, Redirect, router } from "expo-router";
 import { collection, doc, limit, onSnapshot, orderBy, query } from "firebase/firestore";
