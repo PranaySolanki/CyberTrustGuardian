@@ -11,13 +11,24 @@ export default function ScanResult() {
   const [data, setData] = useState<QRResult | null>(null)
 
   useEffect(() => {
-    // Strictly load from store as requested
+    if (data) return;
+    // First try to load from store (for fresh scans)
     const last = getLastQrResult()
     if (last) {
       setData(last)
-      clearLastQrResult() // Clear after reading to prevent stale data if user comes back later
+      clearLastQrResult()
+    } else if (params && (params.risk || params.status)) {
+      // Fallback to params (for navigation from history)
+      setData({
+        risk: (params.risk as any) || (params.status === 'Dangerous' ? 'HIGH' : params.status === 'Suspicious' ? 'MEDIUM' : 'LOW'),
+        score: typeof params.score === 'string' ? parseInt(params.score, 10) : params.score as unknown as number,
+        reason: (params.reason as string) || (params.details as string) || (params.geminiResult as string),
+        geminiResult: (params.geminiResult as string) || (params.reason as string) || (params.details as string),
+        content: params.content as string,
+        safeBrowsingResult: params.safeBrowsingResult as string,
+      })
     }
-  }, [])
+  }, [params, data])
 
   const handleOpen = async () => {
     if (!data?.content) return

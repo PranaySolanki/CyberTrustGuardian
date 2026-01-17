@@ -1,22 +1,32 @@
 import { getLastAppResult } from "@/services/storage/appStore";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ScanResult() {
-  const router = useRouter();
+  const params = useLocalSearchParams();
   const [report, setReport] = useState<any>(null);
 
   useEffect(() => {
+    if (report) return;
     const data = getLastAppResult();
     if (data) {
       setReport(data);
-      // Optional: clear it if you want it to be transient, but user might want to go back and forth
-      // clearLastAppResult(); 
+    } else if (params && params.status) {
+      // Fallback to params from history
+      setReport({
+        appName: params.details as string,
+        package_name: params.package_name as string,
+        analysis: {
+          risk: params.status === 'Dangerous' ? 'HIGH' : params.status === 'Suspicious' ? 'MEDIUM' : 'LOW',
+          score: typeof params.score === 'string' ? parseInt(params.score, 10) : params.score as unknown as number,
+          reason: params.reason as string || params.details as string
+        }
+      });
     }
-  }, []);
+  }, [params, report]);
 
   const analysis = report?.analysis || null;
 

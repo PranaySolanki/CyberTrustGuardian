@@ -1,21 +1,30 @@
 import { clearLastBreachResult, getLastBreachResult } from '@/services/storage/breachStore';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function BreachResult() {
-  const router = useRouter();
+  const params = useLocalSearchParams();
   const [data, setData] = useState<{ risk?: string; score?: number; reason?: string; content?: string } | null>(null);
 
   useEffect(() => {
+    if (data) return;
     const last = getLastBreachResult();
     if (last) {
       setData(last);
       clearLastBreachResult();
+    } else if (params && (params.risk || params.status)) {
+      // Fallback to params (for navigation from history)
+      setData({
+        risk: (params.risk as string) || (params.status === 'Dangerous' ? 'HIGH' : params.status === 'Suspicious' ? 'MEDIUM' : 'LOW'),
+        score: typeof params.score === 'string' ? parseInt(params.score, 10) : params.score as unknown as number,
+        reason: (params.reason as string) || (params.details as string),
+        content: params.content as string,
+      });
     }
-  }, []);
+  }, [params, data]);
 
   const maskContent = (c?: string) => {
     if (!c) return '';

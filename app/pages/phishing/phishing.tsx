@@ -4,7 +4,7 @@ import { safeBrowsingCheck } from '@/services/calls/safeBrowsing'
 import { db } from '@/services/firebase/firebase'
 import { setLastPhishingResult } from '@/services/storage/phishingStore'
 import { recordScan } from '@/services/storage/scanHistory'
-import { recognizeText } from '@/services/utils/mlKit'
+import { extractUrlsFromText, recognizeText } from '@/services/utils/mlKit'
 import { validateAndNormalizeUrl } from '@/services/utils/urlValidator'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
@@ -13,6 +13,7 @@ import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestor
 import React, { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   FlatList,
   Modal,
@@ -175,7 +176,7 @@ export default function Phishing() {
   const analyze = async () => {
     if (!text.trim()) {
       const emptyInputAlert = 'Please enter some content to analyze.'
-      alert(emptyInputAlert)
+      Alert.alert('Empty Input', emptyInputAlert)
       return
     }
 
@@ -183,7 +184,7 @@ export default function Phishing() {
     if (activeTab === 'URL') {
       const validation = validateAndNormalizeUrl(urlToAnalyze);
       if (!validation.isValid) {
-        alert(validation.error || 'Please enter a valid URL.');
+        Alert.alert('Invalid URL', validation.error || 'Please enter a valid URL.');
         return;
       }
       urlToAnalyze = validation.normalizedUrl!;
@@ -265,7 +266,7 @@ export default function Phishing() {
     } catch (error) {
       setLoading(false);
       console.log('Analysis error:', error);
-      alert('An error occurred during analysis. Please try again.');
+      Alert.alert('Error', 'An error occurred during analysis. Please try again.');
     }
   }
 
@@ -310,7 +311,7 @@ export default function Phishing() {
       }
     } catch (error) {
       console.error('Error picking image:', error);
-      alert('Failed to pick image from gallery.');
+      Alert.alert('Error', 'Failed to pick image from gallery.');
       setLoading(false);
     }
   }
