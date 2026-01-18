@@ -155,9 +155,7 @@ export default function Index() {
           <TouchableOpacity style={styles.headerButton} onPress={handleSignOut}>
             <Ionicons name="log-out-outline" size={24} color="#2563EB" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.themeToggle}>
-            <Text style={{ fontSize: 28 }}>◐</Text>
-          </TouchableOpacity>
+          
         </View>
 
         {user && showGreeting && (
