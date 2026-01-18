@@ -45,7 +45,7 @@ const schema: Schema = {
 
 // Now pass it to the model
 const model = genAI.getGenerativeModel({
-  model: "gemini-2.5-flash",
+  model: "gemini-2.5-flash-lite",
   generationConfig: {
     responseMimeType: "application/json",
     responseSchema: schema,
@@ -297,8 +297,7 @@ export const analyzeAppSafety = async (appName: string, packageName: string, per
     {
       "risk": "HIGH" | "MEDIUM" | "LOW",
       "score": 0-100,
-      "reason": "Just the security red flags in 1 sentence.",
-      "official_comparison": "Safe" | "Suspicious" | "Fake"
+      "reason": "Just the security red flags in 1 to 2 sentences.",
     }
 
     EXAMPLES OF GOOD REASONS:
@@ -309,7 +308,6 @@ export const analyzeAppSafety = async (appName: string, packageName: string, per
           "risk": "LOW" | "MEDIUM" | "HIGH",
           "score": 0-100 (where 100 is safest),
           "reason": "Security Verdict: MAX 30 WORDS. Direct and to the point.",
-          "official_comparison": "Likely Safe" | "Potential Fake/Modded" | "Unknown App"
         }
     `;
 
