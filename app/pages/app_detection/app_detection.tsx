@@ -16,6 +16,7 @@ import {
   View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { API_BASE_URL } from "./config";
 
 type AppItem = {
   id: string;
@@ -101,7 +102,7 @@ export default function AppDetection() {
     });
 
     try {
-      const response = await fetch(`https://cybertrustguardian-server.onrender.com/upload`, {
+      const response = await fetch(`${API_BASE_URL}/upload`, {
         method: "POST",
         headers: {
           'Content-Type': 'multipart/form-data',
