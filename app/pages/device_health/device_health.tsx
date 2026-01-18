@@ -46,8 +46,11 @@ export default function DeviceHealth() {
     const emulatorDetected = emulator || securityState.isEmulator;
     const tamperedDetected = hasTestKeys || securityState.isTampered;
 
-    if ((rootDetected || emulatorDetected || tamperedDetected) && !reportedThisSession.current && user) {
+    if (!reportedThisSession.current && user) {
       reportedThisSession.current = true;
+
+      const hasRisk = rootDetected || emulatorDetected || tamperedDetected;
+
       const details = [
         rootDetected ? 'Root Access' : '',
         emulatorDetected ? 'Emulator' : '',
@@ -57,8 +60,8 @@ export default function DeviceHealth() {
       recordScan(
         user.id,
         'System',
-        'Dangerous',
-        details
+        hasRisk ? 'Dangerous' : 'Safe',
+        hasRisk ? details : 'System Integrity Verified'
       );
     }
 
