@@ -145,7 +145,7 @@ export default function Index() {
             <Image
               source={require('../assets/images/logo.png')}
               style={{ width: 40, height: 40, borderRadius: 10 }}
-              resizeMode="contain"
+              contentFit="contain"
             />
           </View>
           <View style={{ flex: 1 }}>

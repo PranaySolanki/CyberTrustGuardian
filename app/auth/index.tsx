@@ -19,7 +19,7 @@ export default function AuthIndex() {
           <Image
             source={require('../../assets/images/logo.png')}
             style={{ width: 100, height: 100, marginBottom: 20 }}
-            resizeMode="contain"
+            contentFit="contain"
           />
           <Text style={styles.heroTitle}>CyberTrust Guardian</Text>
           <Text style={styles.heroSubtitle}>Protect Yourself from Digital Threats</Text>
@@ -67,22 +67,6 @@ export default function AuthIndex() {
             <Text style={styles.featureDescription}>
               Detect root access, emulators, and system tampering to ensure your device environment is safe
             </Text>
-          </View>
-        </View>
-
-        {/* Stats Section */}
-        <View style={styles.statsSection}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>1M+</Text>
-            <Text style={styles.statLabel}>Threats Detected</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>500K+</Text>
-            <Text style={styles.statLabel}>Users Protected</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>24/7</Text>
-            <Text style={styles.statLabel}>Active Monitoring</Text>
           </View>
         </View>
 
