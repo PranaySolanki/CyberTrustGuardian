@@ -137,7 +137,7 @@ export default function QRScanner() {
       // Combine results: Safe Browsing threats override Gemini analysis
       if (hasThreats) {
         finalRisk = 'HIGH';
-        finalScore = Math.min(finalScore, 10); // Ensure low safety score if threats found
+        finalScore = Math.min(finalScore, 2); // Ensure low safety score if threats found
         finalReason = threatDetails + finalReason;
       }
 
@@ -240,7 +240,7 @@ export default function QRScanner() {
       // Show validation error but don't block the user
       Alert.alert(
         'QR Code Scanned',
-        `Scanned content: ${data.substring(0, 50)}${data.length > 50 ? '...' : ''}\n\n${validation.error || 'This QR code does not contain a valid URL.'}\n\nYou can edit it manually if needed.`,
+        `Scanned content: ${data.substring(0, 50)}${data.length > 50 ? '...' : ''}\n\n${validation.error || 'This QR code does not contain a valid URL.'}\n\nYou can edit it manually`,
         [{ text: 'OK' }]
       );
     }
@@ -521,6 +521,11 @@ export default function QRScanner() {
           </View>
 
           <View style={styles.urlInputSection}>
+            {manualUrl ? (
+              <Text style={{ color: 'red', marginBottom: 8, fontSize: 15, fontWeight: '500' }}>
+                The content of QR are displayed in the Text box below you can review it from there
+              </Text>
+            ) : null}
             <View style={styles.urlInputWrapper}>
               <TextInput
                 style={styles.urlInput}

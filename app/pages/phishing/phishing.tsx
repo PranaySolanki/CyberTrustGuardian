@@ -230,7 +230,7 @@ export default function Phishing() {
       if (activeTab === 'URL') {
         if (sbResult && sbResult.matches && sbResult.matches.length > 0) {
           finalRisk = 'HIGH';
-          finalScore = Math.min(finalScore, 10);
+          // finalScore = Math.min(finalScore, 2);
           const threats = sbResult.matches.map((m: any) => m.threatType).join(', ');
           finalReason = `WARNING: Google Safe Browsing detected threats (${threats}). ` + finalReason;
           safeBrowsingText = `⚠️ THREATS DETECTED: ${threats}`;

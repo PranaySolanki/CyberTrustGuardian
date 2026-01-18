@@ -47,7 +47,7 @@ export default function PhishingScanResult() {
     )
   }
 
-  const { risk, score, reason, content } = data;
+  const { risk, score, reason, content, safeBrowsingResult } = data;
   const isHighRisk = risk === 'HIGH';
   const isMediumRisk = risk === 'MEDIUM';
   const isSafe = risk === 'LOW' || risk === 'SAFE';
@@ -88,6 +88,25 @@ export default function PhishingScanResult() {
             </Text>
           </View>
         </View>
+
+        {/* Scan Details - Only for URLs (where safeBrowsingResult exists) */}
+        {safeBrowsingResult ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionHeader}>SCAN DETAILS</Text>
+            <View style={styles.gridContainer}>
+              <View style={styles.gridItem}>
+                <Text style={styles.gridLabel}>Safe Browsing</Text>
+                <Text style={[styles.gridValue, { color: safeBrowsingResult?.includes("THREATS") ? "#EF4444" : "#10B981", fontSize: 13 }]}>
+                  {safeBrowsingResult}
+                </Text>
+              </View>
+              <View style={styles.gridItem}>
+                <Text style={styles.gridLabel}>Content Type</Text>
+                <Text style={styles.gridValue}>URL</Text>
+              </View>
+            </View>
+          </View>
+        ) : null}
 
         {/* Recommendations */}
         <View style={styles.section}>
@@ -152,6 +171,11 @@ const styles = StyleSheet.create({
 
   verdictCard: { backgroundColor: "#FFF", padding: 20, borderRadius: 16, borderWidth: 1, borderColor: "#E2E8F0" },
   verdictText: { fontSize: 15, color: "#334155", lineHeight: 24, fontWeight: "500" },
+
+  gridContainer: { flexDirection: "row", gap: 12, marginBottom: 12 },
+  gridItem: { flex: 1, backgroundColor: "#FFF", padding: 16, borderRadius: 16, borderWidth: 1, borderColor: "#E2E8F0" },
+  gridLabel: { fontSize: 12, color: "#64748B", marginBottom: 4 },
+  gridValue: { fontSize: 16, fontWeight: "700", color: "#0F172A" },
 
   pkgContainer: { backgroundColor: "#FFF", padding: 16, borderRadius: 16, borderWidth: 1, borderColor: "#E2E8F0" },
   pkgLabel: { fontSize: 12, color: "#64748B", marginBottom: 4 },
