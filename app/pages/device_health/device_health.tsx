@@ -76,9 +76,11 @@ export default function DeviceHealth() {
   const isEmulator = localHealth.isEmulator || securityState.isEmulator;
 
   const isTampered = localHealth.hasTestKeys || securityState.isTampered;
+  const isPasscodeSet = securityState.passcodeSet;
 
-
-  const isSafe = !isRooted && !isEmulator && !isTampered && securityState.status === 'GREEN';
+  // Developer mode is a risk, but maybe not "Critical" (Red) unless paired with Root. 
+  // For this logic, we'll keep it as a contributor to "Not Safe" but maybe use Orange in UI if we had that granularity.
+  const isSafe = !isRooted && !isEmulator && isPasscodeSet !== false && securityState.status === 'GREEN';
 
   if (loading && !securityState.status) return (
     <View style={styles.loadingContainer}>
@@ -122,16 +124,16 @@ export default function DeviceHealth() {
               icon="key"
             />
             <HealthItem
-              label="Build Signature (Test Keys/Tampering)"
-              value={isTampered ? "Anomalies Found" : "Official Build"}
-              safe={!isTampered}
-              icon="finger-print"
-            />
-            <HealthItem
               label="Environment"
               value={isEmulator ? "Emulator" : "Physical Device"}
               safe={!isEmulator}
               icon="hardware-chip"
+            />
+            <HealthItem
+              label="Screen Lock"
+              value={isPasscodeSet === false ? "Not Set" : "Secure"}
+              safe={isPasscodeSet !== false}
+              icon="lock-closed"
             />
           </View>
         </View>
@@ -148,7 +150,7 @@ export default function DeviceHealth() {
                 • Emulators may not accurately reflect real-world security.
               </Text>
               <Text style={styles.warningText}>
-                • Tampered apps or test keys indicate a compromised version.
+                • A screen lock (Passcode/Biometrics) protects your data if lost.
               </Text>
             </View>
           </View>

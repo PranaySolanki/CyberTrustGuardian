@@ -21,9 +21,7 @@ type SecurityState = {
     isRooted: boolean;
     isEmulator: boolean;
     isTampered: boolean;
-    isUnofficialStore: boolean;
-    isDebugger: boolean;
-    isHooked: boolean;
+    passcodeSet?: boolean;
     status: 'GREEN' | 'ORANGE' | 'RED';
 };
 
@@ -39,9 +37,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         isRooted: false,
         isEmulator: false,
         isTampered: false,
-        isUnofficialStore: false,
-        isDebugger: false,
-        isHooked: false,
+        passcodeSet: true, 
         status: 'GREEN',
     });
 
@@ -51,10 +47,10 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
             // Calculate derived status
             let newStatus: 'GREEN' | 'ORANGE' | 'RED' = 'GREEN';
-            if (newState.isRooted || newState.isTampered || newState.isHooked) {
+            if (newState.isRooted || newState.isTampered) {
                 newStatus = 'RED';
-            } else if (newState.isEmulator || newState.isDebugger || newState.isUnofficialStore) {
-                newStatus = 'ORANGE'; // Warning but maybe dev environment
+            } else if (newState.isEmulator || newState.passcodeSet === false) {
+                newStatus = 'ORANGE'; // Warning
             }
 
             return { ...newState, status: newStatus };
@@ -71,30 +67,12 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             console.log('Emulator Detected by Talsec');
             updateSecurityState('isEmulator', true);
         },
-        debug: () => {
-            console.log('Debugger Detected');
-            updateSecurityState('isDebugger', true);
-        },
-        appIntegrity: () => {
-            console.log('App Tampering Detected');
-            updateSecurityState('isTampered', true);
-        },
-        unofficialStore: () => {
-            console.log('Untrusted Installation');
-            updateSecurityState('isUnofficialStore', true);
-        },
-        hooks: () => {
-            console.log('Hooks Detected');
-            updateSecurityState('isHooked', true);
-        },
-        deviceBinding: () => {
-            console.log('Device Binding Issue');
-        },
         secureHardwareNotAvailable: () => {
             console.log('Secure Hardware Not Available');
         },
         passcode: () => {
             console.log('Passcode not set');
+            updateSecurityState('passcodeSet', false);
         },
         deviceID: () => {
             // Optional
