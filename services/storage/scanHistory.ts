@@ -48,14 +48,50 @@ export const recordScan = async (
 
                 // Calculate cumulative penalties
                 let newSafetyScore = (currentStats.safetyScore || 100);
+                let systemRiskPenalty = currentStats.systemRiskPenalty || 0;
+                let isSystemRiskActive = currentStats.isSystemRiskActive || false;
 
-                if (type === 'System' && status === 'Dangerous') {
-                    // Critical system failure - drop score below 50 immediately
-                    newSafetyScore = Math.min(newSafetyScore - 10, 45);
-                } else if (status === 'Dangerous') {
-                    newSafetyScore -= 10;
-                } else if (status === 'Suspicious') {
-                    newSafetyScore -= 5;
+                if (type === 'System') {
+                    if (status === 'Dangerous') {
+                        if (!isSystemRiskActive) {
+                            // First time detection: Apply penalty
+                            // Critical system failure - drop score below 50 immediately if it was high
+                            // Or just subtract a large chunk. 
+                            // Current logic was: newSafetyScore = Math.min(newSafetyScore - 10, 45);
+                            // Let's cap the max score at 45.
+
+                            const scoreBefore = newSafetyScore;
+                            const targetMax = 45;
+
+                            if (newSafetyScore > targetMax) {
+                                // Calculate how much we need to drop to hit 45
+                                const penalty = newSafetyScore - targetMax;
+                                systemRiskPenalty = penalty;
+                                newSafetyScore = targetMax;
+                            } else {
+                                // Already low? Maybe just a flat 10 drop? 
+                                // Let's stick to the targetMax logic for consistency or add a flat 10 if already low.
+                                const penalty = 10;
+                                systemRiskPenalty = penalty;
+                                newSafetyScore -= penalty;
+                            }
+
+                            isSystemRiskActive = true;
+                        }
+                    } else if (status === 'Safe') {
+                        if (isSystemRiskActive) {
+                            // Risk resolved: Restore penalty
+                            newSafetyScore += systemRiskPenalty;
+                            systemRiskPenalty = 0;
+                            isSystemRiskActive = false;
+                        }
+                    }
+                } else if (type !== 'Breach') {
+                    if (status === 'Dangerous') {
+                        newSafetyScore -= 2;
+                    } else if (status === 'Suspicious') {
+                        newSafetyScore -= 1;
+                    }
                 }
 
                 // Keep score between 0 and 100
@@ -65,7 +101,9 @@ export const recordScan = async (
                     scansToday: (currentStats.scansToday || 0) + 1,
                     threatsBlocked: (currentStats.threatsBlocked || 0) + (isThreat ? 1 : 0),
                     appsAnalyzed: (currentStats.appsAnalyzed || 0) + (isApp ? 1 : 0),
-                    safetyScore: newSafetyScore
+                    safetyScore: newSafetyScore,
+                    isSystemRiskActive,
+                    systemRiskPenalty
                 };
 
                 transaction.update(userRef, { stats: newStats });
