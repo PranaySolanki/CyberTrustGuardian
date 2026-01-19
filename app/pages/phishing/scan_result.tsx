@@ -14,6 +14,7 @@ export default function PhishingScanResult() {
     content?: string;
     safeBrowsingResult?: string;
     geminiResult?: string;
+    recommendation?: string;
   } | null>(null)
 
   useEffect(() => {
@@ -32,6 +33,7 @@ export default function PhishingScanResult() {
         content: params.content as string,
         safeBrowsingResult: params.safeBrowsingResult as string,
         geminiResult: params.geminiResult as string,
+        recommendation: params.recommendation as string,
       })
     }
   }, [params, data])
@@ -47,7 +49,7 @@ export default function PhishingScanResult() {
     )
   }
 
-  const { risk, score, reason, content, safeBrowsingResult } = data;
+  const { risk, score, reason, content, safeBrowsingResult, recommendation } = data;
   const isHighRisk = risk === 'HIGH';
   const isMediumRisk = risk === 'MEDIUM';
   const isSafe = risk === 'LOW' || risk === 'SAFE';
@@ -111,22 +113,12 @@ export default function PhishingScanResult() {
         {/* Recommendations */}
         <View style={styles.section}>
           <Text style={styles.sectionHeader}>RECOMMENDATIONS</Text>
-          {isHighRisk ? (
-            <View style={[styles.recCard, { borderLeftColor: "#EF4444" }]}>
-              <Text style={styles.recTitle}>Danger Detected</Text>
-              <Text style={styles.recDesc}>Do not click any links or reply to this message. Block the sender immediately.</Text>
-            </View>
-          ) : isMediumRisk ? (
-            <View style={[styles.recCard, { borderLeftColor: "#F59E0B" }]}>
-              <Text style={styles.recTitle}>Proceed with Caution</Text>
-              <Text style={styles.recDesc}>This content looks suspicious. Verify the sender's identity before interacting.</Text>
-            </View>
-          ) : (
-            <View style={[styles.recCard, { borderLeftColor: "#10B981" }]}>
-              <Text style={styles.recTitle}>Safe to View</Text>
-              <Text style={styles.recDesc}>No threats were detected in the text content.</Text>
-            </View>
-          )}
+          <View style={[styles.recCard, { borderLeftColor: themeColor }]}>
+            <Text style={styles.recTitle}>Recommended Action</Text>
+            <Text style={styles.recDesc}>
+              {recommendation || "No specific recommendation available."}
+            </Text>
+          </View>
         </View>
 
         {/* Content Details */}

@@ -26,6 +26,7 @@ export default function ScanResult() {
         geminiResult: (params.geminiResult as string) || (params.reason as string) || (params.details as string),
         content: params.content as string,
         safeBrowsingResult: params.safeBrowsingResult as string,
+        recommendation: params.recommendation as string,
       })
     }
   }, [params, data])
@@ -65,7 +66,7 @@ export default function ScanResult() {
     )
   }
 
-  const { risk, score, geminiResult, content, safeBrowsingResult } = data;
+  const { risk, score, geminiResult, content, safeBrowsingResult, recommendation } = data;
   const isHighRisk = risk === 'HIGH';
   const isMediumRisk = risk === 'MEDIUM';
   const themeColor = isHighRisk ? "#EF4444" : isMediumRisk ? "#F59E0B" : "#10B981";
@@ -130,22 +131,12 @@ export default function ScanResult() {
         {/* Recommendations */}
         <View style={styles.section}>
           <Text style={styles.sectionHeader}>RECOMMENDATIONS</Text>
-          {isHighRisk ? (
-            <View style={[styles.recCard, { borderLeftColor: "#EF4444" }]}>
-              <Text style={styles.recTitle}>Do Not Open</Text>
-              <Text style={styles.recDesc}>This site is flagged as dangerous. It may try to steal your information.</Text>
-            </View>
-          ) : isMediumRisk ? (
-            <View style={[styles.recCard, { borderLeftColor: "#F59E0B" }]}>
-              <Text style={styles.recTitle}>Proceed With Caution</Text>
-              <Text style={styles.recDesc}>This site has some suspicious indicators. Verify the URL carefully.</Text>
-            </View>
-          ) : (
-            <View style={[styles.recCard, { borderLeftColor: "#10B981" }]}>
-              <Text style={styles.recTitle}>Safe To Visit</Text>
-              <Text style={styles.recDesc}>No threats detected. You can open this link safely.</Text>
-            </View>
-          )}
+          <View style={[styles.recCard, { borderLeftColor: themeColor }]}>
+            <Text style={styles.recTitle}>Recommended Action</Text>
+            <Text style={styles.recDesc}>
+              {recommendation || "No specific recommendation available."}
+            </Text>
+          </View>
         </View>
 
         {/* Open Action Button */}

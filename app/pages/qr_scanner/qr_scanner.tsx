@@ -123,15 +123,18 @@ export default function QRScanner() {
       let finalRisk: 'LOW' | 'MEDIUM' | 'HIGH' = 'LOW';
       let finalScore = 0;
       let finalReason = '';
+      let finalRecommendation = '';
 
       if (geminiResult.status === 'fulfilled') {
         const geminiData = geminiResult.value;
         finalRisk = geminiData.risk || 'LOW';
         finalScore = geminiData.score || 0;
         finalReason = geminiData.reason || 'No specific threats detected.';
+        finalRecommendation = geminiData.recommendation || 'No specific recommendation available.';
       } else {
         console.error('Gemini analysis failed:', geminiResult.reason);
         finalReason = 'AI analysis unavailable. ';
+        finalRecommendation = 'No recommendation available due to analysis error.';
       }
 
       // Combine results: Safe Browsing threats override Gemini analysis
@@ -183,7 +186,8 @@ export default function QRScanner() {
         reason: finalReason.trim() || 'Analysis completed.',
         content: validatedUrl,
         safeBrowsingResult: safeBrowsingText,
-        geminiResult: geminiText
+        geminiResult: geminiText,
+        recommendation: finalRecommendation
       };
 
       setLastQrResult(result);

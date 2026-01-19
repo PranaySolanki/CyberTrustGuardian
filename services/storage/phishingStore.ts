@@ -3,6 +3,7 @@ export type PhishingResult = {
   score: number
   reason: string
   content: string
+  recommendation?: string
 }
 
 let lastPhishingResult: PhishingResult | null = null

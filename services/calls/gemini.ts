@@ -39,8 +39,13 @@ const schema: Schema = {
       description: "Brief explanation of why this risk level was assigned",
       nullable: false,
     },
+    recommendation: {
+      type: SchemaType.STRING,
+      description: "Actionable advice in 1-2 sentences",
+      nullable: false,
+    },
   },
-  required: ["risk", "score", "reason"],
+  required: ["risk", "score", "reason", "recommendation"],
 };
 
 // Now pass it to the model
@@ -85,6 +90,7 @@ export const analyzePhisingAttempt = async (content: string, type: 'EMAIL' | 'SM
         - risk: "LOW", "MEDIUM", or "HIGH"
         - score: (0-100, where 100 is safest)
         - reason: A technical explanation of the specific red flags found.
+        - recommendation: Actionable advice in 1-2 sentences.
         
         Content to analyze: "${content}"
     `;
@@ -126,7 +132,8 @@ export const analyzeQrCode = async (content: string) => {
         {
         "risk": "LOW" | "MEDIUM" | "HIGH",
         "score": 0-100 (where 100 is safest),
-        "reason": "Detailed explanation of red flags (e.g., 'Hidden redirect detected' or 'Impersonation of [Brand]')"
+        "reason": "Detailed explanation of red flags (e.g., 'Hidden redirect detected' or 'Impersonation of [Brand]')",
+        "recommendation": "Actionable advice in 1-2 sentences"
         }
 
         QR CONTENT TO ANALYZE: "${content}"
@@ -308,6 +315,7 @@ export const analyzeAppSafety = async (appName: string, packageName: string, per
           "risk": "LOW" | "MEDIUM" | "HIGH",
           "score": 0-100 (where 100 is safest),
           "reason": "Security Verdict: MAX 30 WORDS. Direct and to the point.",
+          "recommendation": "Actionable advice in 1-2 sentences.",
         }
     `;
 
