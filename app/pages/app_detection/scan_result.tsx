@@ -22,7 +22,8 @@ export default function ScanResult() {
         analysis: {
           risk: params.status === 'Dangerous' ? 'HIGH' : params.status === 'Suspicious' ? 'MEDIUM' : 'LOW',
           score: typeof params.score === 'string' ? parseInt(params.score, 10) : params.score as unknown as number,
-          reason: params.reason as string || params.details as string
+          reason: params.reason as string || params.details as string,
+          recommendation: params.recommendation as string
         }
       });
     }
@@ -104,22 +105,12 @@ export default function ScanResult() {
         {/* Recommendations */}
         <View style={styles.section}>
           <Text style={styles.sectionHeader}>RECOMMENDATIONS</Text>
-          {isHighRisk ? (
-            <View style={[styles.recCard, { borderLeftColor: "#EF4444" }]}>
-              <Text style={styles.recTitle}>Immediate Action Required</Text>
-              <Text style={styles.recDesc}>Uninstall this app immediately. It requests dangerous permissions not required for its function.</Text>
-            </View>
-          ) : isMediumRisk ? (
-            <View style={[styles.recCard, { borderLeftColor: "#F59E0B" }]}>
-              <Text style={styles.recTitle}>Review Permissions</Text>
-              <Text style={styles.recDesc}>Check if you really need to grant Camera or Location access to this app.</Text>
-            </View>
-          ) : (
-            <View style={[styles.recCard, { borderLeftColor: "#10B981" }]}>
-              <Text style={styles.recTitle}>Good to Go</Text>
-              <Text style={styles.recDesc}>No significant threats detected. Keep the app updated.</Text>
-            </View>
-          )}
+          <View style={[styles.recCard, { borderLeftColor: themeColor }]}>
+            <Text style={styles.recTitle}>Recommended Action</Text>
+            <Text style={styles.recDesc}>
+              {analysis?.recommendation || "No specific recommendation available."}
+            </Text>
+          </View>
         </View>
 
         <View style={{ height: 40 }} />

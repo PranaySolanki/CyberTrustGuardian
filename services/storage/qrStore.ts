@@ -5,6 +5,7 @@ export type QRResult = {
   content: string
   safeBrowsingResult?: string | null
   geminiResult?: string
+  recommendation?: string
 }
 
 let lastQrResult: QRResult | null = null

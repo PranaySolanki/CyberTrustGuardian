@@ -7,6 +7,7 @@ export type AppResult = {
         score: number
         reason: string
         official_comparison?: string
+        recommendation?: string
     }
 }
 

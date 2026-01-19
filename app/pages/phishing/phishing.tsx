@@ -250,7 +250,8 @@ export default function Phishing() {
         reason: finalReason,
         content: urlToAnalyze.slice(0, 200) + (urlToAnalyze.length > 200 ? '...' : ''),
         safeBrowsingResult: safeBrowsingText,
-        geminiResult: analysis.reason
+        geminiResult: analysis.reason,
+        recommendation: analysis.recommendation
       };
 
       // Store result in memory
