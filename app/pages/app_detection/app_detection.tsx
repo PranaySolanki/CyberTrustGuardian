@@ -1,14 +1,13 @@
 import { useAuth } from "@/services/auth/authContext";
-import { analyzeAppSafety } from "@/services/calls/gemini";
-import { setLastAppResult } from "@/services/storage/appStore";
-import { recordScan } from "@/services/storage/scanHistory";
+import useAppScanner, { AppResult } from "@/services/useAppScanner";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,65 +17,41 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { API_BASE_URL } from "./config";
 
-type AppItem = {
-  id: string;
-  name: string;
-  icon: keyof typeof Ionicons.glyphMap;
-};
 
-const mockApps: AppItem[] = [
-  { id: "1", name: "Flashlight Pro", icon: "flash" },
-  { id: "2", name: "Social Connect", icon: "people" },
-  { id: "3", name: "Super Cleaner", icon: "trash" },
-  { id: "4", name: "Weather Today", icon: "sunny" },
-  { id: "5", name: "PDF Reader", icon: "document" },
-  { id: "6", name: "Music Player", icon: "musical-notes" },
-  { id: "7", name: "Notes App", icon: "create" },
-];
+
+
+
+type AppItem = AppResult;
 
 export default function AppDetection() {
   // ✅ STATE MUST BE HERE (before return)
+
+  /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
+  const { apps, loading: appsLoading, error: appsError, getAppPermissions, getAppIcon } = useAppScanner();
 
   const { user } = useAuth();
   const [selectedApk, setSelectedApk] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const router = useRouter();
 
-  const handleScan = (item: AppItem) => {
-    // Mock data based on the selected app
-    const mockData = {
-      package_name: `com.${item.name.toLowerCase().replace(/\s+/g, '.')}`,
-      permissions: [
-        "android.permission.CAMERA",
-        "android.permission.READ_CONTACTS",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.INTERNET"
-      ],
-      appName: item.name,
-      analysis: {
-        risk: "HIGH",
-        score: 12,
-        reason: `Excessive permissions detected: This ${item.name} version is requesting contacts and location data which is suspicious for its category.`,
-        official_comparison: "Unknown App"
-      }
-    };
 
-    // Store in global state
-    // @ts-ignore
-    setLastAppResult(mockData);
 
-    // Record scan in history and update dashboard stats
-    if (user) {
-      recordScan(
-        user.id,
-        'App',
-        mockData.analysis.risk === 'HIGH' ? 'Dangerous' : 'Safe',
-        mockData.appName,
-        mockData
-      );
+  const handleScan = async (item: AppItem) => {
+    try {
+      setIsScanning(true);
+
+      // Fetch permissions fresh from native module
+      const permissions = await getAppPermissions(item.packageName);
+
+
+    //  router.push("/pages/app_detection/scan_result");
+
+    } catch (e) {
+      console.error("Scan error:", e);
+      Alert.alert("Scan Failed", "Could not analyze this app.");
+    } finally {
+      setIsScanning(false);
     }
-
-    router.push("/pages/app_detection/scan_result");
   };
 
   const [analysisResult, setAnalysisResult] = useState<{
@@ -156,30 +131,46 @@ export default function AppDetection() {
       setIsScanning(true);
       const appName = selectedApk.name || "Unknown App";
 
+      
+
       // Navigate to result
       router.push("/pages/app_detection/scan_result");
 
-      // Clear the form data after navigation
-      setSelectedApk(null);
-      setAnalysisResult(null);
     } catch (error) {
-      console.log("Gemini Analysis Error:", error);
-      Alert.alert("Analysis Failed", "Could not complete AI analysis.");
+      console.error("Scan error:", error);
+      Alert.alert("Scan Failed", "Could not analyze the selected APK.");
     } finally {
       setIsScanning(false);
     }
   };
 
-  const renderItem = ({ item }: { item: AppItem }) => {
+  const AppItemRow = ({ item, onScan, getIcon }: { item: AppItem, onScan: (item: AppItem) => void, getIcon: (pkg: string) => Promise<string | null> }) => {
+    const [iconUri, setIconUri] = useState<string | null>(null);
+
+    useEffect(() => {
+      let mounted = true;
+      getIcon(item.packageName).then(uri => {
+        if (mounted && uri) setIconUri(uri);
+      });
+      return () => { mounted = false; };
+    }, [item.packageName, getIcon]);
+
     return (
       <View style={styles.card}>
-        <View style={styles.left}>
+        <View style={[styles.left, { flex: 1 }]}>
           <View style={styles.iconBox}>
-            <Ionicons name={item.icon} size={20} color="#2563EB" />
+            {iconUri ? (
+              <Image source={{ uri: iconUri }} style={{ width: 32, height: 32 }} borderRadius={8} />
+            ) : (
+              <Ionicons name="logo-android" size={20} color="#2563EB" />
+            )}
           </View>
-          <Text style={styles.appName}>{item.name}</Text>
+          <View style={{ minWidth: 0 }}>
+            <Text style={styles.appName} numberOfLines={1} ellipsizeMode="tail">{item.appName}</Text>
+            <Text style={{ fontSize: 10, color: '#64748B' }} numberOfLines={1} ellipsizeMode="tail">{item.packageName}</Text>
+          </View>
         </View>
-        <TouchableOpacity style={styles.scanBtn} onPress={() => handleScan(item)}>
+        <TouchableOpacity style={styles.scanBtn} onPress={() => onScan(item)}>
           <Text style={styles.scanText}>Scan</Text>
         </TouchableOpacity>
       </View>
@@ -256,7 +247,7 @@ export default function AppDetection() {
               >
                 {analysisResult.permissions.map((perm, index) => {
                   const shortPerm = perm.split('.').pop();
-                  const isDangerous = ["BIND_ACCESSIBILITY_SERVICE","READ_CONTACTS","USE_BIOMETRIC", "BIND_NOTIFICATION_LISTENER_SERVICE","WRITE_EXTERNAL_STORAGE", "READ_EXTERNAL_STORAGE", "RECORD_AUDIO", "READ_SMS", "ACCESS_FINE_LOCATION"].includes(shortPerm || "");
+                  const isDangerous = ["BIND_ACCESSIBILITY_SERVICE", "READ_CONTACTS", "USE_BIOMETRIC", "BIND_NOTIFICATION_LISTENER_SERVICE", "WRITE_EXTERNAL_STORAGE", "READ_EXTERNAL_STORAGE", "RECORD_AUDIO", "READ_SMS", "ACCESS_FINE_LOCATION"].includes(shortPerm || "");
 
                   return (
                     <View key={index} style={[styles.permBadge, isDangerous && styles.dangerBadge]}>
@@ -272,14 +263,36 @@ export default function AppDetection() {
           </View>
         )}
 
-        {/* ✅ APP LIST - Note: Changed to map since we are inside a ScrollView */}
+
+        {/* ✅ APP LIST */}
         <View style={{ marginTop: 10 }}>
-          {mockApps.map((item) => (
-            <View key={item.id}>
-              {renderItem({ item })}
+          <Text style={{ fontSize: 16, fontWeight: '700', color: '#0F172A', marginBottom: 12, marginLeft: 4 }}>
+            Installed Applications
+          </Text>
+
+          {appsLoading && (
+            <View style={{ padding: 20, alignItems: "center" }}>
+              <ActivityIndicator size="large" color="#2563EB" />
+              <Text style={{ marginTop: 10, color: '#64748B' }}>Scanning installed apps...</Text>
             </View>
+          )}
+
+          {appsError && (
+            <View style={{ padding: 16, backgroundColor: '#FEF2F2', borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: '#FECACA' }}>
+              <Text style={{ color: '#DC2626', fontWeight: '600' }}>Unable to load apps</Text>
+              <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>{appsError}</Text>
+            </View>
+          )}
+
+          {!appsLoading && !appsError && apps.length === 0 && (
+            <Text style={{ textAlign: "center", color: '#64748B', marginTop: 20 }}>No apps found.</Text>
+          )}
+
+          {apps.map((item, index) => (
+            <AppItemRow key={`${item.packageName}-${index}`} item={item} onScan={handleScan} getIcon={getAppIcon} />
           ))}
         </View>
+
 
         {/* Spacer for bottom padding */}
         <View style={{ height: 40 }} />
