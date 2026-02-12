@@ -17,10 +17,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { API_BASE_URL } from "./config";
 
-
-
-
-
 type AppItem = AppResult;
 
 export default function AppDetection() {
@@ -38,10 +34,10 @@ export default function AppDetection() {
 
   const handleScan = async (item: AppItem) => {
     try {
-      setIsScanning(true);
+      //setIsScanning(true);
 
       // Fetch permissions fresh from native module
-      const permissions = await getAppPermissions(item.packageName);
+      //const permissions = await getAppPermissions(item.packageName);
 
 
     //  router.push("/pages/app_detection/scan_result");
@@ -50,7 +46,7 @@ export default function AppDetection() {
       console.error("Scan error:", e);
       Alert.alert("Scan Failed", "Could not analyze this app.");
     } finally {
-      setIsScanning(false);
+      // setIsScanning(false);
     }
   };
 
