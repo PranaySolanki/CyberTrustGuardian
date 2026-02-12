@@ -156,34 +156,6 @@ export default function AppDetection() {
       setIsScanning(true);
       const appName = selectedApk.name || "Unknown App";
 
-      const analysis = await analyzeAppSafety(
-        appName,
-        analysisResult.package_name,
-        analysisResult.permissions
-      );
-
-      // Store in global state
-      // @ts-ignore
-      setLastAppResult({
-        ...analysisResult, // permissions, package_name, etc.
-        appName: appName,
-        // @ts-ignore
-        analysis: analysis // The Gemini result
-      });
-
-      // Record scan in history and update dashboard stats
-      if (user) {
-        const risk = analysis.risk || 'LOW';
-        const status = risk === 'HIGH' ? 'Dangerous' : risk === 'MEDIUM' ? 'Suspicious' : 'Safe';
-        recordScan(
-          user.id,
-          'App',
-          status,
-          appName,
-          { ...analysisResult, appName, analysis }
-        );
-      }
-
       // Navigate to result
       router.push("/pages/app_detection/scan_result");
 

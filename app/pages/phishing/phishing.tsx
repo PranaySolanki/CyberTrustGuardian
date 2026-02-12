@@ -198,24 +198,24 @@ export default function Phishing() {
 
       if (activeTab === 'URL') {
         // Run both in parallel for URLs
-        const [geminiRes, sbRes] = await Promise.allSettled([
-          analyzePhisingAttempt(urlToAnalyze, 'URL'),
-          safeBrowsingCheck(urlToAnalyze)
-        ]);
+        // const [geminiRes, sbRes] = await Promise.allSettled([
+          // analyzePhisingAttempt(urlToAnalyze, 'URL'),
+        //   safeBrowsingCheck(urlToAnalyze)
+        // ]);
 
-        if (geminiRes.status === 'fulfilled') {
-          analysis = geminiRes.value;
-        } else {
-          console.error('Gemini analysis failed:', geminiRes.reason);
-        }
+        // if (geminiRes.status === 'fulfilled') {
+        //   analysis = geminiRes.value;
+        // } else {
+        //   console.error('Gemini analysis failed:', geminiRes.reason);
+        // }
 
-        if (sbRes.status === 'fulfilled') {
-          sbResult = sbRes.value;
-        }
+        // if (sbRes.status === 'fulfilled') {
+        //   sbResult = sbRes.value;
+        // }
       }
       else {
         // Just Gemini for Email/SMS
-        analysis = await analyzePhisingAttempt(text, activeTab.toUpperCase() as any);
+        // analysis = await analyzePhisingAttempt(text, activeTab.toUpperCase() as any);
       }
 
       setLoading(false);
@@ -263,7 +263,7 @@ export default function Phishing() {
         recordScan(user.id, activeTab === 'URL' ? 'URL' : activeTab === 'SMS' ? 'SMS' : 'Email', status, urlToAnalyze.slice(0, 30), resultData);
       }
 
-      router.push({ pathname: '/pages/phishing/scan_result' })
+      // router.push({ pathname: '/pages/phishing/scan_result' })
     } catch (error) {
       setLoading(false);
       console.log('Analysis error:', error);
