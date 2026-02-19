@@ -6,15 +6,15 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function PhishingScanResult() {
-  const params = useLocalSearchParams()
   const [data, setData] = useState<{
     risk?: string;
     score?: number;
     reason?: string;
     content?: string;
     safeBrowsingResult?: string;
-    geminiResult?: string;
     recommendation?: string;
+    PhishingType?: string;
+    urlIsPresent?: boolean;
   } | null>(null)
 
   useEffect(() => {
@@ -24,19 +24,8 @@ export default function PhishingScanResult() {
     if (last) {
       setData(last)
       clearLastPhishingResult()
-    } else if (params && params.risk) {
-      // Fallback to params (for navigation from history)
-      setData({
-        risk: params.risk as string,
-        score: typeof params.score === 'string' ? parseInt(params.score, 10) : params.score as unknown as number,
-        reason: (params.reason as string) || (params.details as string),
-        content: params.content as string,
-        safeBrowsingResult: params.safeBrowsingResult as string,
-        geminiResult: params.geminiResult as string,
-        recommendation: params.recommendation as string,
-      })
-    }
-  }, [params, data])
+    } 
+  }, [data])
 
   if (!data) {
     return (
@@ -49,13 +38,27 @@ export default function PhishingScanResult() {
     )
   }
 
-  const { risk, score, reason, content, safeBrowsingResult, recommendation } = data;
+  const { risk, score, reason, content, safeBrowsingResult, recommendation, PhishingType, urlIsPresent } = data;
   const isHighRisk = risk === 'HIGH';
   const isMediumRisk = risk === 'MEDIUM';
   const isSafe = risk === 'LOW' || risk === 'SAFE';
 
   // Dynamic Theme Colors
   const themeColor = isHighRisk ? "#EF4444" : isMediumRisk ? "#F59E0B" : "#10B981";
+
+  const urlSection = urlIsPresent ? (
+    <View style={styles.section}>
+      <Text style={styles.sectionHeader}>URL ANALYSIS</Text>
+      <View style={styles.gridContainer}>
+        <View style={styles.gridItem}>
+          <Text style={styles.gridLabel}>Safe Browsing</Text>
+          <Text style={[styles.gridValue, { color: safeBrowsingResult?.includes("THREATS") ? "#EF4444" : "#10B981", fontSize: 13 }]}>
+            {safeBrowsingResult}
+          </Text>
+        </View>
+      </View>
+    </View>
+  ) : null;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -91,24 +94,31 @@ export default function PhishingScanResult() {
           </View>
         </View>
 
-        {/* Scan Details - Only for URLs (where safeBrowsingResult exists) */}
-        {safeBrowsingResult ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionHeader}>SCAN DETAILS</Text>
-            <View style={styles.gridContainer}>
-              <View style={styles.gridItem}>
-                <Text style={styles.gridLabel}>Safe Browsing</Text>
-                <Text style={[styles.gridValue, { color: safeBrowsingResult?.includes("THREATS") ? "#EF4444" : "#10B981", fontSize: 13 }]}>
-                  {safeBrowsingResult}
-                </Text>
-              </View>
-              <View style={styles.gridItem}>
-                <Text style={styles.gridLabel}>Content Type</Text>
-                <Text style={styles.gridValue}>URL</Text>
-              </View>
-            </View>
+        {/* Phishing Type */}
+        <View style={styles.section}>
+          <Text style={styles.sectionHeader}>PHISHING TYPE</Text>
+          <View style={styles.verdictCard}>
+            <Text style={styles.verdictText}>
+              {PhishingType || "Analysis unavailable."}
+            </Text>
           </View>
-        ) : null}
+        </View>
+
+        {/* Scan Details - Only for URLs (where url exists) */}
+        { urlIsPresent ? (
+    <View style={styles.section}>
+      <Text style={styles.sectionHeader}>URL ANALYSIS</Text>
+      <View style={styles.gridContainer}>
+        <View style={styles.gridItem}>
+          <Text style={styles.gridLabel}>Safe Browsing</Text>
+          <Text style={[styles.gridValue, { color: safeBrowsingResult?.includes("THREATS") ? "#EF4444" : "#10B981", fontSize: 13 }]}>
+            {safeBrowsingResult}
+          </Text>
+        </View>
+      </View>
+    </View>
+  ) : null
+}
 
         {/* Recommendations */}
         <View style={styles.section}>
@@ -149,7 +159,7 @@ const styles = StyleSheet.create({
     justifyContent: "center", alignItems: "center", backgroundColor: "#FFF",
     shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 10, elevation: 4
   },
-  scoreValue: { fontSize: 48, fontWeight: "800", letterSpacing: -1 },
+  scoreValue: { fontSize: 46, fontWeight: "800", letterSpacing: -1 },
   scoreLabel: { fontSize: 12, color: "#64748B", textTransform: "uppercase", fontWeight: "600", marginTop: -4 },
 
   riskBadge: {
