@@ -45,16 +45,20 @@ export default function DeviceHealth() {
     const rootDetected = rooted || securityState.isRooted;
     const emulatorDetected = emulator || securityState.isEmulator;
     const tamperedDetected = hasTestKeys || securityState.isTampered;
+    const devModeDetected = securityState.isDevMode;
+    const adbDetected = securityState.isADBEnabled;
 
     if (!reportedThisSession.current && user) {
       reportedThisSession.current = true;
 
-      const hasRisk = rootDetected || emulatorDetected || tamperedDetected;
+      const hasRisk = rootDetected || emulatorDetected || tamperedDetected || devModeDetected || adbDetected;
 
       const details = [
         rootDetected ? 'Root Access' : '',
         emulatorDetected ? 'Emulator' : '',
-        tamperedDetected ? 'System Tampering' : ''
+        tamperedDetected ? 'System Tampering' : '',
+        devModeDetected ? 'Developer Options' : '',
+        adbDetected ? 'USB Debugging' : '',
       ].filter(Boolean).join(', ');
 
       recordScan(
@@ -83,7 +87,7 @@ export default function DeviceHealth() {
 
   // Developer mode is a risk, but maybe not "Critical" (Red) unless paired with Root. 
   // For this logic, we'll keep it as a contributor to "Not Safe" but maybe use Orange in UI if we had that granularity.
-  const isSafe = !isRooted && !isEmulator && isPasscodeSet !== false && securityState.status === 'GREEN';
+  const isSafe = !isRooted && !isEmulator && isPasscodeSet !== false && !securityState.isDevMode && !securityState.isADBEnabled && securityState.status === 'GREEN';
 
   if (loading && !securityState.status) return (
     <View style={styles.loadingContainer}>
@@ -119,48 +123,58 @@ export default function DeviceHealth() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Security Checks</Text>
 
-          <View style={styles.card}>
-            <HealthItem
-              label="Root Access (SU Binaries)"
-              value={isRooted ? "Detected" : "Not Found"}
-              safe={!isRooted}
-              icon="key"
-            />
-            <HealthItem
-              label="Environment"
-              value={isEmulator ? "Emulator" : "Physical Device"}
-              safe={!isEmulator}
-              icon="hardware-chip"
-            />
-            <HealthItem
-              label="Screen Lock"
-              value={isPasscodeSet === false ? "Not Set" : "Secure"}
-              safe={isPasscodeSet !== false}
-              icon="lock-closed"
-            />
+          <HealthItem
+            label="Root Access (SU Binaries)"
+            value={isRooted ? "Detected" : "Not Found"}
+            safe={!isRooted}
+            icon="key"
+          />
+          <HealthItem
+            label="Environment"
+            value={isEmulator ? "Emulator" : "Physical Device"}
+            safe={!isEmulator}
+            icon="hardware-chip"
+          />
+          <HealthItem
+            label="Screen Lock"
+            value={isPasscodeSet === false ? "Not Set" : "Secure"}
+            safe={isPasscodeSet !== false}
+            icon="lock-closed"
+          />
+          <HealthItem
+            label="Developer Options"
+            value={securityState.isDevMode ? "Enabled" : "Disabled"}
+            safe={!securityState.isDevMode}
+            icon="code-slash"
+          />
+          <HealthItem
+            label="USB Debugging"
+            value={securityState.isADBEnabled ? "Enabled" : "Disabled"}
+            safe={!securityState.isADBEnabled}
+            icon="construct"
+          />
+        </View>
+      </ScrollView>
+
+      {/* Recommendation Section */}
+      {!isSafe && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Recommendations</Text>
+          <View style={[styles.card, styles.warningCard]}>
+            <Text style={styles.warningText}>
+              • Rooted devices are vulnerable to data theft.
+            </Text>
+            <Text style={styles.warningText}>
+              • Emulators may not accurately reflect real-world security.
+            </Text>
+            <Text style={styles.warningText}>
+              • A screen lock (Passcode/Biometrics) protects your data if lost.
+            </Text>
           </View>
         </View>
+      )}
 
-        {/* Recommendation Section */}
-        {!isSafe && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Recommendations</Text>
-            <View style={[styles.card, styles.warningCard]}>
-              <Text style={styles.warningText}>
-                • Rooted devices are vulnerable to data theft.
-              </Text>
-              <Text style={styles.warningText}>
-                • Emulators may not accurately reflect real-world security.
-              </Text>
-              <Text style={styles.warningText}>
-                • A screen lock (Passcode/Biometrics) protects your data if lost.
-              </Text>
-            </View>
-          </View>
-        )}
-
-      </ScrollView>
-    </SafeAreaView>
+    </SafeAreaView >
   );
 }
 
