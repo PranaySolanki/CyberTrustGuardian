@@ -21,6 +21,8 @@ type SecurityState = {
     isRooted: boolean;
     isEmulator: boolean;
     isTampered: boolean;
+    isDevMode?: boolean;
+    isADBEnabled?: boolean;
     passcodeSet?: boolean;
     status: 'GREEN' | 'ORANGE' | 'RED';
 };
@@ -37,7 +39,9 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         isRooted: false,
         isEmulator: false,
         isTampered: false,
-        passcodeSet: true, 
+        isDevMode: false,
+        isADBEnabled: false,
+        passcodeSet: true,
         status: 'GREEN',
     });
 
@@ -49,7 +53,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             let newStatus: 'GREEN' | 'ORANGE' | 'RED' = 'GREEN';
             if (newState.isRooted || newState.isTampered) {
                 newStatus = 'RED';
-            } else if (newState.isEmulator || newState.passcodeSet === false) {
+            } else if (newState.isEmulator || newState.passcodeSet === false || newState.isDevMode || newState.isADBEnabled) {
                 newStatus = 'ORANGE'; // Warning
             }
 
@@ -76,44 +80,52 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         },
         deviceID: () => {
             // Optional
-        }
+        },
+        devMode: () => {
+            console.log('Developer Mode Enabled');
+            updateSecurityState('isDevMode', true);
+        },
+        adbEnabled: () => {
+            console.log('ADB Enabled');
+            updateSecurityState('isADBEnabled', true);
+        },
     }), []);
 
-    // Manual Talsec Initialization to handle Hot Reload crashes
-    useEffect(() => {
-        const initTalsec = async () => {
-            // Talsec requires native code not available in Expo Go
-            if (Constants.appOwnership === 'expo') {
-                console.log('Skipping Talsec initialization in Expo Go');
-                return;
+// Manual Talsec Initialization to handle Hot Reload crashes
+useEffect(() => {
+    const initTalsec = async () => {
+        // Talsec requires native code not available in Expo Go
+        if (Constants.appOwnership === 'expo') {
+            console.log('Skipping Talsec initialization in Expo Go');
+            return;
+        }
+
+        try {
+            await setThreatListeners(actions);
+            const config = getTalsecConfig();
+            const response = await talsecStart(config);
+            console.log('Talsec started:', response);
+        } catch (e: any) {
+            // Suppress "Array already consumed" and "already started" errors typical in Dev Hot Reload
+            if (e?.message?.includes('already consumed') || e?.code?.includes('consume')) {
+            } else {
+                console.error('Talsec Initialization Error:', e);
             }
+        }
+    };
 
-            try {
-                await setThreatListeners(actions);
-                const config = getTalsecConfig();
-                const response = await talsecStart(config);
-                console.log('Talsec started:', response);
-            } catch (e: any) {
-                // Suppress "Array already consumed" and "already started" errors typical in Dev Hot Reload
-                if (e?.message?.includes('already consumed') || e?.code?.includes('consume')) {
-                } else {
-                    console.error('Talsec Initialization Error:', e);
-                }
-            }
-        };
+    initTalsec();
 
-        initTalsec();
+    return () => {
+        removeThreatListener();
+    };
+}, []); // Run once on mount
 
-        return () => {
-            removeThreatListener();
-        };
-    }, []); // Run once on mount
-
-    return (
-        <SecurityContext.Provider value={{ securityState, updateSecurityState }}>
-            {children}
-        </SecurityContext.Provider>
-    );
+return (
+    <SecurityContext.Provider value={{ securityState, updateSecurityState }}>
+        {children}
+    </SecurityContext.Provider>
+);
 };
 
 export const useSecurity = () => {
