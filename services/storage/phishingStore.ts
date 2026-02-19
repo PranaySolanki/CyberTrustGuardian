@@ -4,6 +4,8 @@ export type PhishingResult = {
   reason: string
   content: string
   recommendation?: string
+  PhishingType?: string
+  urlIsPresent?: boolean
 }
 
 let lastPhishingResult: PhishingResult | null = null
