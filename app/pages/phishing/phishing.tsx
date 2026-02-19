@@ -192,83 +192,66 @@ export default function Phishing() {
 
     setLoading(true);
     try {
-      // Run analysis
-      let analysis: any;
-      let sbResult: any = null;
+      // 1. Extract URLs from the pasted SMS text using your existing utility
+    const urls = extractUrlsFromText(text);
+    
+    // 2. Local Heuristic Analysis (Check for common Phishing patterns)
+    const phishingKeywords = ['urgent', 'verify', 'locked', 'bank', 'account', 'unusual', 'suspended'];
+    const foundKeywords = phishingKeywords.filter(word => text.toLowerCase().includes(word));
 
-      if (activeTab === 'URL') {
-        // Run both in parallel for URLs
-        // const [geminiRes, sbRes] = await Promise.allSettled([
-          // analyzePhisingAttempt(urlToAnalyze, 'URL'),
-        //   safeBrowsingCheck(urlToAnalyze)
-        // ]);
+    // 3. URL Safety Check (Using your safeBrowsing.ts service)
+    let isUrlMalicious = false;
+    let threatDetails = '';
 
-        // if (geminiRes.status === 'fulfilled') {
-        //   analysis = geminiRes.value;
-        // } else {
-        //   console.error('Gemini analysis failed:', geminiRes.reason);
-        // }
-
-        // if (sbRes.status === 'fulfilled') {
-        //   sbResult = sbRes.value;
-        // }
+    if (urls.length > 0) {
+      // Check the first URL found in the SMS
+      const sbResult = await safeBrowsingCheck(urls[0]);
+      if (sbResult && sbResult.matches && sbResult.matches.length > 0) {
+        isUrlMalicious = true;
+        threatDetails = sbResult.matches.map((m: any) => m.threatType).join(', ');
       }
-      else {
-        // Just Gemini for Email/SMS
-        // analysis = await analyzePhisingAttempt(text, activeTab.toUpperCase() as any);
-      }
-
-      setLoading(false);
-      setText('');
-
-      // Combine Results if URL
-      let finalRisk = analysis.risk;
-      let finalScore = analysis.score;
-      let finalReason = analysis.reason;
-      let safeBrowsingText = 'Not checked';
-
-      if (activeTab === 'URL') {
-        if (sbResult && sbResult.matches && sbResult.matches.length > 0) {
-          finalRisk = 'HIGH';
-          // finalScore = Math.min(finalScore, 2);
-          const threats = sbResult.matches.map((m: any) => m.threatType).join(', ');
-          finalReason = `WARNING: Google Safe Browsing detected threats (${threats}). ` + finalReason;
-          safeBrowsingText = `⚠️ THREATS DETECTED: ${threats}`;
-        } else if (sbResult === null) {
-          safeBrowsingText = 'API key not configured - check skipped';
-        } else {
-          safeBrowsingText = '✓ No threats detected';
-        }
-      } else {
-        // No Safe Browsing for Email/SMS
-        safeBrowsingText = '';
-      }
-
-      const resultData = {
-        risk: finalRisk,
-        score: finalScore,
-        reason: finalReason,
-        content: urlToAnalyze.slice(0, 200) + (urlToAnalyze.length > 200 ? '...' : ''),
-        safeBrowsingResult: safeBrowsingText,
-        geminiResult: analysis.reason,
-        recommendation: analysis.recommendation
-      };
-
-      // Store result in memory
-      setLastPhishingResult(resultData);
-
-      // Record scan
-      if (user) {
-        const status = finalRisk === 'HIGH' ? 'Dangerous' : finalRisk === 'MEDIUM' ? 'Suspicious' : 'Safe';
-        recordScan(user.id, activeTab === 'URL' ? 'URL' : activeTab === 'SMS' ? 'SMS' : 'Email', status, urlToAnalyze.slice(0, 30), resultData);
-      }
-
-      // router.push({ pathname: '/pages/phishing/scan_result' })
-    } catch (error) {
-      setLoading(false);
-      console.log('Analysis error:', error);
-      Alert.alert('Error', 'An error occurred during analysis. Please try again.');
     }
+
+    // 4. Calculate Risk Score
+    let risk: 'LOW' | 'MEDIUM' | 'HIGH' = 'LOW';
+    let score = 100;
+
+    if (isUrlMalicious) {
+      risk = 'HIGH';
+      score = 20;
+    } else if (foundKeywords.length > 0 || urls.length > 0) {
+      risk = 'MEDIUM';
+      score = 60;
+    }
+
+
+    const resultData = {
+      risk,
+      score,
+      reason: isUrlMalicious 
+        ? `High Risk: Malicious URL detected (${threatDetails}).` 
+        : `Analysis found ${foundKeywords.length} suspicious keywords.`,
+      content: text,
+      safeBrowsingResult: isUrlMalicious ? `⚠️ THREATS: ${threatDetails}` : '✓ Links appear safe',
+      recommendation: risk === 'HIGH' ? 'Do not click links. Delete message.' : 'Proceed with caution.',
+      PhishingType: activeTab,
+      urlIsPresent: urls.length > 0,
+    };
+
+    // 5. Store and Navigate (matching your existing UI flow)
+    setLastPhishingResult(resultData);
+    if (user) {
+      const status = risk === 'HIGH' ? 'Dangerous' : risk === 'MEDIUM' ? 'Suspicious' : 'Safe';
+      recordScan(user.id, 'SMS', status, text.slice(0, 30), resultData);
+    }
+
+    router.push({ pathname: '/pages/phishing/scan_result' })
+  } catch (error) {
+    console.error('Analysis error:', error);
+    Alert.alert('Error', 'An error occurred during analysis.');
+  } finally {
+    setLoading(false);
+  }
   }
 
   const pickImage = async () => {
