@@ -1,8 +1,8 @@
-import { cacheDirectory, moveAsync, deleteAsync } from 'expo-file-system/legacy';
 import { useAuth } from "@/services/auth/authContext";
 import useAppScanner, { AppResult } from "@/services/useAppScanner";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
+import { cacheDirectory, deleteAsync, moveAsync } from 'expo-file-system/legacy';
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -12,6 +12,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View
 } from "react-native";
@@ -21,37 +22,37 @@ import ApkParser from "../../../modules/apk-parser";
 type AppItem = AppResult;
 
 const AppItemRow = React.memo(({ item, onScan, getIcon }: { item: AppItem, onScan: (item: AppItem) => void, getIcon: (pkg: string) => Promise<string | null> }) => {
-    const [iconUri, setIconUri] = useState<string | null>(null);
+  const [iconUri, setIconUri] = useState<string | null>(null);
 
-    useEffect(() => {
-      let mounted = true;
-      getIcon(item.packageName).then(uri => {
-        if (mounted && uri) setIconUri(uri);
-      });
-      return () => { mounted = false; };
-    }, [item.packageName, getIcon]);
+  useEffect(() => {
+    let mounted = true;
+    getIcon(item.packageName).then(uri => {
+      if (mounted && uri) setIconUri(uri);
+    });
+    return () => { mounted = false; };
+  }, [item.packageName, getIcon]);
 
-    return (
-      <View style={styles.card}>
-        <View style={[styles.left, { flex: 1 }]}>
-          <View style={styles.iconBox}>
-            {iconUri ? (
-              <Image source={{ uri: iconUri }} style={{ width: 32, height: 32 }} borderRadius={8} />
-            ) : (
-              <Ionicons name="logo-android" size={20} color="#2563EB" />
-            )}
-          </View>
-          <View style={{ minWidth: 0 }}>
-            <Text style={styles.appName} numberOfLines={1} ellipsizeMode="tail">{item.appName}</Text>
-            <Text style={{ fontSize: 10, color: '#64748B' }} numberOfLines={1} ellipsizeMode="tail">{item.packageName}</Text>
-          </View>
+  return (
+    <View style={styles.card}>
+      <View style={[styles.left, { flex: 1 }]}>
+        <View style={styles.iconBox}>
+          {iconUri ? (
+            <Image source={{ uri: iconUri }} style={{ width: 32, height: 32 }} borderRadius={8} />
+          ) : (
+            <Ionicons name="logo-android" size={20} color="#2563EB" />
+          )}
         </View>
-        <TouchableOpacity style={styles.scanBtn} onPress={() => onScan(item)}>
-          <Text style={styles.scanText}>Scan</Text>
-        </TouchableOpacity>
+        <View style={{ minWidth: 0 }}>
+          <Text style={styles.appName} numberOfLines={1} ellipsizeMode="tail">{item.appName}</Text>
+          <Text style={{ fontSize: 10, color: '#64748B' }} numberOfLines={1} ellipsizeMode="tail">{item.packageName}</Text>
+        </View>
       </View>
-    );
-  });
+      <TouchableOpacity style={styles.scanBtn} onPress={() => onScan(item)}>
+        <Text style={styles.scanText}>Scan</Text>
+      </TouchableOpacity>
+    </View>
+  );
+});
 
 export default function AppDetection() {
   // ✅ STATE MUST BE HERE (before return)
@@ -73,7 +74,7 @@ export default function AppDetection() {
       //const permissions = await getAppPermissions(item.packageName);
 
 
-    //  router.push("/pages/app_detection/scan_result");
+      //  router.push("/pages/app_detection/scan_result");
 
     } catch (e) {
       console.error("Scan error:", e);
@@ -89,45 +90,46 @@ export default function AppDetection() {
   } | null>(null);
 
   const apkLoadPermissions = async (asset?: any) => {
-  const targetApk = asset || selectedApk;
-  if (!targetApk) return;
+    const targetApk = asset || selectedApk;
+    if (!targetApk) return;
 
-  setIsScanning(true);
-  setAnalysisResult(null);
+    setIsScanning(true);
+    setAnalysisResult(null);
 
-  // Small delay to let the loading spinner render on screen
-  setTimeout(async () => {
-    try {
-      const localUri = `${cacheDirectory}temp_analysis.apk`;
+    // Small delay to let the loading spinner render on screen
+    setTimeout(async () => {
+      try {
+        const localUri = `${cacheDirectory}temp_analysis.apk`;
 
-      // Copying the file is often what causes the freeze if the file is large
-      await moveAsync({
-        from: targetApk.uri,
-        to: localUri
-      });
-
-      const cleanPath = localUri.replace('file://', '');
-      
-      // This is now calling the fixed AsyncFunction
-      const data = await ApkParser.parseApk(cleanPath);
-
-      if (data) {
-        setAnalysisResult({
-          package_name: data.package_name,
-          permissions: data.permissions,
+        // Copying the file is often what causes the freeze if the file is large
+        await moveAsync({
+          from: targetApk.uri,
+          to: localUri
         });
+
+        const cleanPath = localUri.replace('file://', '');
+
+        // This is now calling the fixed AsyncFunction
+        const data = await ApkParser.parseApk(cleanPath);
+
+        if (data) {
+          setAnalysisResult({
+            package_name: data.package_name,
+            permissions: data.permissions,
+          });
+          setShowAllPermissions(false);
+          setIsScanning(false);
+        }
+
+        await deleteAsync(localUri, { idempotent: true });
+      } catch (error) {
+        console.error("Analysis Error:", error);
+        Alert.alert("Scan Failed", "Local analysis encountered an error.");
+      } finally {
         setIsScanning(false);
       }
-
-      await deleteAsync(localUri, { idempotent: true });
-    } catch (error) {
-      console.error("Analysis Error:", error);
-      Alert.alert("Scan Failed", "Local analysis encountered an error.");
-    } finally {
-      setIsScanning(false);
-    }
-  }, 100); 
-};
+    }, 100);
+  };
 
   const pickApk = async () => {
     try {
@@ -167,7 +169,19 @@ export default function AppDetection() {
     }
   };
 
-  
+  /* Search State */
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchingApps, setIsSearchingApps] = useState(false);
+  const [showAllPermissions, setShowAllPermissions] = useState(false);
+
+  // Filter apps based on search query
+  const filteredApps = React.useMemo(() => {
+    if (!searchQuery) return apps;
+    return apps.filter(app =>
+      app.appName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      app.packageName.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [apps, searchQuery]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -230,14 +244,10 @@ export default function AppDetection() {
               Requested Permissions ({analysisResult.permissions.length})
             </Text>
 
-            {/* Nested ScrollView for permissions */}
-            <View style={styles.scrollArea}>
-              <ScrollView
-                nestedScrollEnabled={true}
-                contentContainerStyle={styles.permissionList}
-                showsVerticalScrollIndicator={true}
-              >
-                {analysisResult.permissions.map((perm, index) => {
+            {/* Expandable Permissions List */}
+            <View style={styles.permissionListContainer}>
+              <View style={styles.permissionList}>
+                {(showAllPermissions ? analysisResult.permissions : analysisResult.permissions.slice(0, 8)).map((perm, index) => {
                   const shortPerm = perm.split('.').pop();
                   const isDangerous = ["BIND_ACCESSIBILITY_SERVICE", "READ_CONTACTS", "USE_BIOMETRIC", "BIND_NOTIFICATION_LISTENER_SERVICE", "WRITE_EXTERNAL_STORAGE", "READ_EXTERNAL_STORAGE", "RECORD_AUDIO", "READ_SMS", "ACCESS_FINE_LOCATION"].includes(shortPerm || "");
 
@@ -250,7 +260,18 @@ export default function AppDetection() {
                     </View>
                   );
                 })}
-              </ScrollView>
+              </View>
+
+              {analysisResult.permissions.length > 8 && (
+                <TouchableOpacity
+                  onPress={() => setShowAllPermissions(!showAllPermissions)}
+                  style={{ alignSelf: 'flex-start', marginTop: 8, paddingVertical: 4, paddingHorizontal: 2 }}
+                >
+                  <Text style={{ color: '#2563EB', fontWeight: '600', fontSize: 13 }}>
+                    {showAllPermissions ? "Show Less" : `Show More (+${analysisResult.permissions.length - 8})`}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         )}
@@ -258,9 +279,35 @@ export default function AppDetection() {
 
         {/* ✅ APP LIST */}
         <View style={{ marginTop: 10 }}>
-          <Text style={{ fontSize: 16, fontWeight: '700', color: '#0F172A', marginBottom: 12, marginLeft: 4 }}>
-            Installed Applications
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingRight: 4 }}>
+            {isSearchingApps ? (
+              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 8, borderWidth: 1, borderColor: '#2563EB', paddingHorizontal: 10, height: 40 }}>
+                <Ionicons name="search" size={18} color="#64748B" style={{ marginRight: 8 }} />
+                <TextInput
+                  style={{ flex: 1, color: '#0F172A', fontSize: 14 }}
+                  placeholder="Search apps..."
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  autoFocus
+                />
+                <TouchableOpacity onPress={() => { setIsSearchingApps(false); setSearchQuery(""); }}>
+                  <Ionicons name="close-circle" size={18} color="#94A3B8" />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#0F172A', marginLeft: 4 }}>
+                  Installed Applications
+                </Text>
+                <TouchableOpacity
+                  style={{ padding: 6, backgroundColor: '#EFF6FF', borderRadius: 8 }}
+                  onPress={() => setIsSearchingApps(true)}
+                >
+                  <Ionicons name="search" size={20} color="#2563EB" />
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
 
           {appsLoading && (
             <View style={{ padding: 20, alignItems: "center" }}>
@@ -276,11 +323,13 @@ export default function AppDetection() {
             </View>
           )}
 
-          {!appsLoading && !appsError && apps.length === 0 && (
-            <Text style={{ textAlign: "center", color: '#64748B', marginTop: 20 }}>No apps found.</Text>
+          {!appsLoading && !appsError && filteredApps.length === 0 && (
+            <Text style={{ textAlign: "center", color: '#64748B', marginTop: 20 }}>
+              {searchQuery ? "No apps match your search." : "No apps found."}
+            </Text>
           )}
 
-          {apps.map((item, index) => (
+          {filteredApps.map((item, index) => (
             <AppItemRow key={`${item.packageName}`} item={item} onScan={handleScan} getIcon={getAppIcon} />
           ))}
         </View>
@@ -424,11 +473,10 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textTransform: "uppercase",
   },
-  scrollArea: {
-    maxHeight: 200, // Limits the height of the permission block
-    borderRadius: 8,
+  permissionListContainer: {
     backgroundColor: "#F9FBFF",
-    padding: 5,
+    padding: 8,
+    borderRadius: 8,
   },
   permissionList: {
     flexDirection: "row",
