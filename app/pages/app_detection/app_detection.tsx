@@ -1,3 +1,4 @@
+import { cacheDirectory, moveAsync, deleteAsync } from 'expo-file-system/legacy';
 import { useAuth } from "@/services/auth/authContext";
 import useAppScanner, { AppResult } from "@/services/useAppScanner";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,132 +16,11 @@ import {
   View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { API_BASE_URL } from "./config";
+import ApkParser from "../../../modules/apk-parser";
 
 type AppItem = AppResult;
 
-export default function AppDetection() {
-  // ✅ STATE MUST BE HERE (before return)
-
-  /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
-  const { apps, loading: appsLoading, error: appsError, getAppPermissions, getAppIcon } = useAppScanner();
-
-  const { user } = useAuth();
-  const [selectedApk, setSelectedApk] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
-  const [isScanning, setIsScanning] = useState(false);
-  const router = useRouter();
-
-
-
-  const handleScan = async (item: AppItem) => {
-    try {
-      //setIsScanning(true);
-
-      // Fetch permissions fresh from native module
-      //const permissions = await getAppPermissions(item.packageName);
-
-
-    //  router.push("/pages/app_detection/scan_result");
-
-    } catch (e) {
-      console.error("Scan error:", e);
-      Alert.alert("Scan Failed", "Could not analyze this app.");
-    } finally {
-      // setIsScanning(false);
-    }
-  };
-
-  const [analysisResult, setAnalysisResult] = useState<{
-    package_name: string;
-    permissions: string[];
-  } | null>(null);
-
-  const apkLoadPermissions = async (asset?: DocumentPicker.DocumentPickerAsset | any) => {
-    const isAsset = asset && asset.uri;
-    const targetApk = isAsset ? asset : selectedApk;
-
-    if (!targetApk) return;
-
-    setIsScanning(true);
-    setAnalysisResult(null);
-
-    const formData = new FormData();
-    // @ts-ignore
-    formData.append("apk", {
-      uri: targetApk.uri,
-      name: targetApk.name,
-      type: "application/vnd.android.package-archive",
-    });
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/upload`, {
-        method: "POST",
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setAnalysisResult(data);
-        if (data.permissions && data.permissions.length === 0) {
-          Alert.alert("Scan Complete", "No permissions found.");
-        }
-      } else {
-        Alert.alert("Error", data.error || "Server error");
-      }
-    } catch (error) {
-      console.error(error);
-      Alert.alert("Connection Failed", "Check backend server.");
-    } finally {
-      setIsScanning(false);
-    }
-
-  };
-
-  const pickApk = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: "application/vnd.android.package-archive",
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0];
-        setSelectedApk(asset);
-        await apkLoadPermissions(asset);
-      }
-    } catch (error) {
-      console.log("APK selection error:", error);
-    }
-  };
-
-
-  const apkHandleScan = async () => {
-    if (!selectedApk || !analysisResult) {
-      Alert.alert("No Data", "Please select an APK first.");
-      return;
-    }
-
-    try {
-      setIsScanning(true);
-      const appName = selectedApk.name || "Unknown App";
-
-      
-
-      // Navigate to result
-      router.push("/pages/app_detection/scan_result");
-
-    } catch (error) {
-      console.error("Scan error:", error);
-      Alert.alert("Scan Failed", "Could not analyze the selected APK.");
-    } finally {
-      setIsScanning(false);
-    }
-  };
-
-  const AppItemRow = ({ item, onScan, getIcon }: { item: AppItem, onScan: (item: AppItem) => void, getIcon: (pkg: string) => Promise<string | null> }) => {
+const AppItemRow = React.memo(({ item, onScan, getIcon }: { item: AppItem, onScan: (item: AppItem) => void, getIcon: (pkg: string) => Promise<string | null> }) => {
     const [iconUri, setIconUri] = useState<string | null>(null);
 
     useEffect(() => {
@@ -171,7 +51,123 @@ export default function AppDetection() {
         </TouchableOpacity>
       </View>
     );
+  });
+
+export default function AppDetection() {
+  // ✅ STATE MUST BE HERE (before return)
+
+  const { apps, loading: appsLoading, error: appsError, getAppPermissions, getAppIcon } = useAppScanner();
+
+  const { user } = useAuth();
+  const [selectedApk, setSelectedApk] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const router = useRouter();
+
+
+
+  const handleScan = React.useCallback(async (item: AppItem) => {
+    try {
+      //setIsScanning(true);
+
+      // Fetch permissions fresh from native module
+      //const permissions = await getAppPermissions(item.packageName);
+
+
+    //  router.push("/pages/app_detection/scan_result");
+
+    } catch (e) {
+      console.error("Scan error:", e);
+      Alert.alert("Scan Failed", "Could not analyze this app.");
+    } finally {
+      // setIsScanning(false);
+    }
+  }, []);
+
+  const [analysisResult, setAnalysisResult] = useState<{
+    package_name: string;
+    permissions: string[];
+  } | null>(null);
+
+  const apkLoadPermissions = async (asset?: any) => {
+  const targetApk = asset || selectedApk;
+  if (!targetApk) return;
+
+  setIsScanning(true);
+  setAnalysisResult(null);
+
+  // Small delay to let the loading spinner render on screen
+  setTimeout(async () => {
+    try {
+      const localUri = `${cacheDirectory}temp_analysis.apk`;
+
+      // Copying the file is often what causes the freeze if the file is large
+      await moveAsync({
+        from: targetApk.uri,
+        to: localUri
+      });
+
+      const cleanPath = localUri.replace('file://', '');
+      
+      // This is now calling the fixed AsyncFunction
+      const data = await ApkParser.parseApk(cleanPath);
+
+      if (data) {
+        setAnalysisResult({
+          package_name: data.package_name,
+          permissions: data.permissions,
+        });
+        setIsScanning(false);
+      }
+
+      await deleteAsync(localUri, { idempotent: true });
+    } catch (error) {
+      console.error("Analysis Error:", error);
+      Alert.alert("Scan Failed", "Local analysis encountered an error.");
+    } finally {
+      setIsScanning(false);
+    }
+  }, 100); 
+};
+
+  const pickApk = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "application/vnd.android.package-archive",
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setSelectedApk(asset);
+        await apkLoadPermissions(asset);
+      }
+    } catch (error) {
+      console.log("APK selection error:", error);
+    }
   };
+
+
+  const apkHandleScan = async () => {
+    if (!selectedApk || !analysisResult) {
+      Alert.alert("No Data", "Please select an APK first.");
+      return;
+    }
+
+    try {
+      setIsScanning(true);
+      const appName = selectedApk.name || "Unknown App";
+
+      // Navigate to result
+      router.push("/pages/app_detection/scan_result");
+
+    } catch (error) {
+      console.error("Scan error:", error);
+      Alert.alert("Scan Failed", "Could not analyze the selected APK.");
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  
 
   return (
     <SafeAreaView style={styles.container}>
@@ -285,7 +281,7 @@ export default function AppDetection() {
           )}
 
           {apps.map((item, index) => (
-            <AppItemRow key={`${item.packageName}-${index}`} item={item} onScan={handleScan} getIcon={getAppIcon} />
+            <AppItemRow key={`${item.packageName}`} item={item} onScan={handleScan} getIcon={getAppIcon} />
           ))}
         </View>
 
