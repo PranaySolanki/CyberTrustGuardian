@@ -12,4 +12,5 @@ expo-env.d.ts
 *.dex
 *.apk
 .expo/types/router.d.ts
-/.expo
+.expo
+.env
