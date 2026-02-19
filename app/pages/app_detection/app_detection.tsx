@@ -303,7 +303,7 @@ export default function AppDetection() {
                   style={{ padding: 6, backgroundColor: '#EFF6FF', borderRadius: 8 }}
                   onPress={() => setIsSearchingApps(true)}
                 >
-                  <Ionicons name="search" size={20} color="#2563EB" />
+                  <Ionicons name="search" size={25} color="#2563EB" />
                 </TouchableOpacity>
               </>
             )}
