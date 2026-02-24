@@ -8,12 +8,18 @@ const app = express();
 const port = 3000;
 
 app.use(cors());
+app.use(express.json());
 
 const upload = multer({ dest: 'uploads/' });
 
+/**
+ * POST /upload
+ * Parses an uploaded APK file and returns its package name and permissions.
+ * ML analysis is now done on-device via TFLite — this endpoint only extracts data.
+ */
 app.post('/upload', upload.single('apk'), async (req, res) => {
   if (!req.file) {
-    return res.status(400).send('No file uploaded.');
+    return res.status(400).json({ error: 'No file uploaded.' });
   }
 
   const filePath = req.file.path;
@@ -21,33 +27,24 @@ app.post('/upload', upload.single('apk'), async (req, res) => {
   try {
     const reader = ApkParser.readFile(filePath);
     const manifest = reader.readManifestSync();
-    
-    // Normalize permissions to be an array of strings
+
+    // Normalize permissions to an array of strings
     let permissions = manifest.usesPermissions || [];
     if (permissions.length > 0 && typeof permissions[0] === 'object') {
-        permissions = permissions.map(p => p.name);
+      permissions = permissions.map(p => p.name);
     }
 
     const packageName = manifest.package || 'Unknown Package';
 
-    // Clean up
-    if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-    }
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
-    res.json({ 
-        package_name: packageName,
-        permissions: permissions 
-    });
+    res.json({ package_name: packageName, permissions });
   } catch (error) {
     console.error('Error parsing APK:', error);
     if (fs.existsSync(filePath)) {
-      try {
-        fs.unlinkSync(filePath);
-      } catch (e) { console.error('Error deleting file:', e); }
+      try { fs.unlinkSync(filePath); } catch (e) { /* ignore */ }
     }
-    // Send JSON error instead of text
-    res.status(500).json({ error: 'Failed to parse APK file' });
+    res.status(500).json({ error: 'Failed to parse APK file.' });
   }
 });
 

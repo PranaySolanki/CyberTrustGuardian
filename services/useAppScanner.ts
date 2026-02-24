@@ -46,7 +46,8 @@ export default function useAppScanner() {
     if (Platform.OS !== 'android') return [];
     try {
       const permissions = await ExpoAndroidAppList.getPermissions(packageName);
-      return (permissions as string[]) || [];
+      // Filter: keep only real Android permission strings, remove empty/system-internal entries
+      return (permissions as string[]).filter(p => p && p.includes('permission')) || [];
     } catch (error) {
       console.error(`Failed to get permissions for ${packageName}:`, error);
       return [];

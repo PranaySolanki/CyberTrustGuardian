@@ -10,15 +10,12 @@ const getApiUrl = () => {
       const localhost = debuggerHost?.split(":")[0];
       
       if (localhost) {
-          return `http://${localhost}:3000`; // Assuming backend is on port 3000
+        return `http://${localhost}:5000`; // Backend is on port 5000
       }
   }
 
-  // Hardcoded fallback for development when automatic detection fails
-  return "http://192.168.1.34:3000";
-
-  // Fallback for production
-  // return "https://your-production-api.com"; 
+  // Fallback for production or if dev IP isn't found
+  return "https://your-production-api.com"; 
 };
 
 export const API_BASE_URL = getApiUrl();

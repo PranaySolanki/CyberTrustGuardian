@@ -1,5 +1,8 @@
 import { useAuth } from "@/services/auth/authContext";
+import { API_BASE_URL } from "@/services/config";
+import { clearLastAppResult } from "@/services/storage/appStore";
 import useAppScanner, { AppResult } from "@/services/useAppScanner";
+import { useTFLiteClassifier } from "@/services/useTFLiteModel";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { useRouter } from "expo-router";
@@ -15,7 +18,6 @@ import {
   View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { API_BASE_URL } from "./config";
 
 type AppItem = AppResult;
 
@@ -26,6 +28,7 @@ export default function AppDetection() {
   const { apps, loading: appsLoading, error: appsError, getAppPermissions, getAppIcon } = useAppScanner();
 
   const { user } = useAuth();
+  const { predict, isReady } = useTFLiteClassifier();
   const [selectedApk, setSelectedApk] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const router = useRouter();
@@ -34,19 +37,34 @@ export default function AppDetection() {
 
   const handleScan = async (item: AppItem) => {
     try {
-      //setIsScanning(true);
+      setIsScanning(true);
 
-      // Fetch permissions fresh from native module
-      //const permissions = await getAppPermissions(item.packageName);
+      // Fetch permissions from native module
+      const permissions = await getAppPermissions(item.packageName);
 
+      // Run on-device TFLite inference with app context for Trust Dampener
+      const analysis = predict(permissions, item.isSystemApp ?? false, item.packageName);
 
-    //  router.push("/pages/app_detection/scan_result");
+      // Clear any stale store data so scan_result uses our fresh params
+      clearLastAppResult();
 
-    } catch (e) {
-      console.error("Scan error:", e);
-      Alert.alert("Scan Failed", "Could not analyze this app.");
+      router.push({
+        pathname: "/pages/app_detection/scan_result",
+        params: {
+          package_name: item.packageName,
+          appName: item.appName,
+          status: analysis.risk === 'HIGH' ? 'Dangerous' : analysis.risk === 'MEDIUM' ? 'Suspicious' : 'Safe',
+          score: Math.max(5, 100 - (isNaN(analysis.riskScore) ? 0 : analysis.riskScore)),
+          reason: analysis.reason,
+          recommendation: analysis.recommendation,
+          details: item.appName,
+        }
+      });
+    } catch (e: any) {
+      console.error("Scan error details:", e);
+      Alert.alert("Scan Failed", `Error: ${e.message || JSON.stringify(e)}`);
     } finally {
-      // setIsScanning(false);
+      setIsScanning(false);
     }
   };
 
@@ -166,8 +184,12 @@ export default function AppDetection() {
             <Text style={{ fontSize: 10, color: '#64748B' }} numberOfLines={1} ellipsizeMode="tail">{item.packageName}</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.scanBtn} onPress={() => onScan(item)}>
-          <Text style={styles.scanText}>Scan</Text>
+        <TouchableOpacity
+          style={[styles.scanBtn, (!isReady || isScanning) && { opacity: 0.5 }]}
+          onPress={() => onScan(item)}
+          disabled={!isReady || isScanning}
+        >
+          <Text style={styles.scanText}>{isReady ? 'Scan' : '...'}</Text>
         </TouchableOpacity>
       </View>
     );
