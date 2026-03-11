@@ -42,8 +42,28 @@ export default function AppDetection() {
       // Fetch permissions from native module
       const permissions = await getAppPermissions(item.packageName);
 
-      // Run on-device TFLite inference with app context for Trust Dampener
-      const analysis = predict(permissions, item.isSystemApp ?? false, item.packageName);
+      // Gemini Contextual Analysis (Backend)
+      let contextModifier = 1.0;
+      try {
+        const response = await fetch(`${API_BASE_URL}/analyze-context`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            appName: item.appName,
+            packageName: item.packageName,
+            permissions: permissions
+          }),
+        });
+        const ctxResults = await response.json();
+        if (ctxResults.modifier) {
+          contextModifier = ctxResults.modifier;
+        }
+      } catch (err) {
+        console.warn("[Gemini] Context analysis failed, using default (1.0)");
+      }
+
+      // Run on-device TFLite inference with app context + Gemini Modifier
+      const analysis = predict(permissions, item.isSystemApp ?? false, item.packageName, contextModifier);
 
       // Clear any stale store data so scan_result uses our fresh params
       clearLastAppResult();
@@ -143,15 +163,47 @@ export default function AppDetection() {
 
     try {
       setIsScanning(true);
-      const appName = selectedApk.name || "Unknown App";
 
-      
+      const appName = selectedApk.name?.replace('.apk', '') || "Unknown App";
+      const packageName = analysisResult.package_name;
+      const permissions = analysisResult.permissions || [];
 
-      // Navigate to result
-      router.push("/pages/app_detection/scan_result");
+      // 1. Gemini Contextual Analysis (same as installed-app flow)
+      let geminiModifier = 1.0;
+      try {
+        const response = await fetch(`${API_BASE_URL}/analyze-context`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ appName, packageName, permissions }),
+        });
+        const ctxResult = await response.json();
+        if (ctxResult.modifier) {
+          geminiModifier = ctxResult.modifier;
+        }
+      } catch {
+        console.warn("[Gemini] Context analysis failed for APK, using default (1.0)");
+      }
 
+      // 2. Run TFLite + Rule-based analysis (same pipeline as installed apps)
+      // APKs are never system apps, so isSystemApp = false
+      const analysis = predict(permissions, false, packageName, geminiModifier);
+
+      clearLastAppResult();
+
+      router.push({
+        pathname: "/pages/app_detection/scan_result",
+        params: {
+          package_name: packageName,
+          appName,
+          status: analysis.risk === 'HIGH' ? 'Dangerous' : analysis.risk === 'MEDIUM' ? 'Suspicious' : 'Safe',
+          score: Math.max(5, 100 - (isNaN(analysis.riskScore) ? 0 : analysis.riskScore)),
+          reason: analysis.reason,
+          recommendation: analysis.recommendation,
+          details: appName,
+        }
+      });
     } catch (error) {
-      console.error("Scan error:", error);
+      console.error("APK Scan error:", error);
       Alert.alert("Scan Failed", "Could not analyze the selected APK.");
     } finally {
       setIsScanning(false);

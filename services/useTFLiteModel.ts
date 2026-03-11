@@ -30,11 +30,12 @@ export function useTFLiteClassifier() {
     permissions: string[],
     isSystemApp: boolean = false,
     packageName: string = '',
+    contextModifier: number = 1.0,
   ): AnalysisResult => {
     // ── Fallback: rule-based multi-factor scoring while TFLite initializes ──
     if (plugin.state !== 'loaded' || !plugin.model) {
       console.log('[TFLite] Not ready — using rule-based fallback.');
-      return ruleBasedAnalysis(permissions, isSystemApp, packageName);
+      return ruleBasedAnalysis(permissions, isSystemApp, packageName, contextModifier);
     }
 
     // ── TFLite on-device inference (40%) + rule-based factors (60%) ─────────
@@ -53,15 +54,15 @@ export function useTFLiteClassifier() {
 
       if (!outputData || outputData.length === 0) {
         console.warn('[TFLite] Empty output — falling back to rules.');
-        return ruleBasedAnalysis(permissions, isSystemApp, packageName);
+        return ruleBasedAnalysis(permissions, isSystemApp, packageName, contextModifier);
       }
 
       console.log('[TFLite] Raw output:', Array.from(outputData));
       const mlRiskScore = interpretModelOutput(outputData);
-      return fullAnalysis(permissions, mlRiskScore, isSystemApp, packageName);
+      return fullAnalysis(permissions, mlRiskScore, isSystemApp, packageName, contextModifier);
     } catch (err) {
       console.error('[TFLite] Inference error — falling back to rules:', err);
-      return ruleBasedAnalysis(permissions, isSystemApp, packageName);
+      return ruleBasedAnalysis(permissions, isSystemApp, packageName, contextModifier);
     }
   }, [plugin]);
 

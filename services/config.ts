@@ -13,7 +13,7 @@ const getApiUrl = () => {
 
   // Hardcoded fallback for development when automatic detection fails
   // Run `ipconfig` in your terminal and update this with your IPv4 address
-  return "http://192.168.1.40:3000";
+  return "http://192.168.1.33:3000";
 };
 
 export const API_BASE_URL = getApiUrl();

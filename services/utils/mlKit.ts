@@ -1,5 +1,3 @@
-
-
 // ── Feature columns matching apps_dataset.csv training order ─────────────────
 export const FEATURE_COLUMNS: string[] = [
   'ACCESS_ALL_DOWNLOADS',
@@ -255,14 +253,14 @@ export type AnalysisResult = {
 // Critical/dangerous (15–20 pts), Sensitive (8–14 pts), Moderate (3–7 pts), Low (1–2 pts)
 const PERMISSION_WEIGHTS: Record<string, number> = {
     // ── CRITICAL (20) ──────────────────────────────────────────────────────────
-    BRICK: 20, READ_SMS: 20, SEND_SMS: 20,
+    BRICK: 20, READ_SMS: 20, SEND_SMS: 20, BIND_NOTIFICATION_LISTENER_SERVICE: 20,
     // ── HIGH DANGER (18) ──────────────────────────────────────────────────────
     BROADCAST_SMS: 18, RECEIVE_SMS: 18, RECORD_AUDIO: 18,
     // ── DANGEROUS (14–16) ─────────────────────────────────────────────────────
     READ_CALL_LOG: 16, WRITE_CALL_LOG: 16,
     ACCESS_FINE_LOCATION: 15, BIND_ACCESSIBILITY_SERVICE: 15,
     INSTALL_PACKAGES: 14, MASTER_CLEAR: 14, BIND_DEVICE_ADMIN: 14,
-    INJECT_EVENTS: 14, CALL_PRIVILEGED: 14,
+    INJECT_EVENTS: 14, CALL_PRIVILEGED: 14, 
     // ── SENSITIVE (10–12) ─────────────────────────────────────────────────────
     RECEIVE_MMS: 12, MODIFY_PHONE_STATE: 12, WRITE_SECURE_SETTINGS: 12,
     READ_CONTACTS: 12, REBOOT: 12,
@@ -345,6 +343,7 @@ function permissionScore(shortPerms: Set<string>): { score: number; flagged: str
         if (weight > 0 && shortPerms.has(perm)) {
             total += weight;
             if (weight >= 14) criticalCount++; // Track highly dangerous permissions
+            if (weight >= 20) criticalCount += 10; // Track highly dangerous permissions
             if (weight >= 6) flagged.push(perm);
         }
     }
@@ -352,7 +351,7 @@ function permissionScore(shortPerms: Set<string>): { score: number; flagged: str
     // Non-linear scoring: prevents permission bloat bias.
     // Having 10 normal permissions won't equal 1 critical one.
     const finalScore = (criticalCount * 25) + (flagged.length * 5);
-    return { score: Math.min(85, finalScore), flagged }; // Cap at 85 (ML still contributes)
+    return { score: Math.min(100, finalScore), flagged }; // Allow it to hit 100 on severe permissions
 }
 
 /**
@@ -383,7 +382,6 @@ function buildReason(
     source: 'ai' | 'rules',
 ): string {
     const parts: string[] = [];
-    if (source === 'ai') parts.push(`${mlScore}% threat`);
     if (flaggedPerms.length > 0) {
         parts.push(`risky permissions: ${flaggedPerms.slice(0, 3).join(', ')}${flaggedPerms.length > 3 ? ` +${flaggedPerms.length - 3} more` : ''}`);
     }
@@ -408,8 +406,11 @@ export const buildAnalysisResult = (
     let riskScore: number;
     if (source === 'ai' && mlRiskScore >= 0) {
         riskScore = Math.round(mlRiskScore * 0.40 + permSc * 0.35 + comboSc * 0.25);
+        // If ML yields a false negative, don't let it drag down an obviously dangerous app.
+        riskScore = Math.max(riskScore, permSc, comboSc);
     } else {
         riskScore = Math.round(permSc * 0.60 + comboSc * 0.40);
+        riskScore = Math.max(riskScore, permSc, comboSc);
     }
 
     // ── 🛡️ Trust Dampener ───────────────────────────────────────────
@@ -417,14 +418,33 @@ export const buildAnalysisResult = (
     if (isSystemApp) {
         riskScore = Math.round(riskScore * 0.4);
     }
-    // Trusted publishers use many permissions legitimately — reduce risk by 50%
+    // Trusted publishers use many permissions legitimately — reduce risk by 80%
     const TRUSTED_PUBLISHERS = [
+        // Global Giants
         'com.google', 'com.whatsapp', 'com.instagram', 'com.facebook',
         'com.microsoft', 'com.samsung', 'com.spotify', 'com.amazon',
         'com.netflix', 'com.twitter', 'com.snapchat', 'com.linkedin',
+        'com.apple.android', 'com.adobe', 'com.yahoo', 'com.skype',
+        'org.mozilla', 'com.brave', 'com.opera', 'com.discord',
+        'com.ubercab', 'com.zhiliaoapp.musically', // Uber, TikTok
+
+        // Indian/Regional Context (Based on user's current additions)
+        'com.myairtelapp', 'com.myntra.android', 'com.flipkart.android',
+        'net.one97.paytm', 'com.phonepe.app', 'com.google.android.apps.nbu.paisa.user', // GPay
+        // Major Indian Banks
+        'com.sbi.YONO', 'com.sbi.SBIFreedomPlus', // SBI
+        'com.snapwork.hdfc', // HDFC
+        'com.csam.icici.bank.imobile', // ICICI
+        'com.axis.mobile', // Axis
+        'com.pnb.mBanking', 'com.pnb.PnbPassbook', // PNB
+        'com.bankofindia.boiMobile', // BOI
+        'com.bom.mahaconnect', // Bank of Maharashtra
+        'com.canarabank.mobil', // Canara Bank
+        'com.infrasoft.ubimobility', // Union Bank of India
+        'com.kotak811mobilebankingapp' // Kotak
     ];
     if (TRUSTED_PUBLISHERS.some(pub => packageName.startsWith(pub))) {
-        riskScore = Math.round(riskScore * 0.5);
+        riskScore = Math.round(riskScore * 0.25);
     }
 
     riskScore = isNaN(riskScore) ? 0 : Math.min(100, Math.max(0, riskScore));
@@ -475,4 +495,3 @@ export const fullAnalysis = (
     const { score: comboSc, combos } = comboScore(cleanedPerms);
     return buildAnalysisResult(permSc, flagged, comboSc, combos, mlRiskScore, 'ai', isSystemApp, packageName);
 };
-
