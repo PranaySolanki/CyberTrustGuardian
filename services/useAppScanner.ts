@@ -1,6 +1,15 @@
-import { ExpoAndroidAppList } from 'expo-android-app-list';
 import { useCallback, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
+
+// Determine if we are running in Expo Go
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient || Constants.appOwnership === 'expo';
+
+// Only load the native module on Android and NOT in Expo Go
+const ExpoAndroidAppList =
+  Platform.OS === 'android' && !isExpoGo
+    ? require('expo-android-app-list').ExpoAndroidAppList
+    : null;
 
 export type AppResult = {
   appName: string;

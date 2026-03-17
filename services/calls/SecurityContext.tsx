@@ -1,6 +1,30 @@
-import Constants from 'expo-constants';
-import { ThreatEventActions, removeThreatListener, setThreatListeners, talsecStart } from 'freerasp-react-native';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { Platform } from 'react-native';
+
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient || Constants.appOwnership === 'expo';
+
+// freerasp-react-native is native-only; provide no-op stubs on web or Expo Go
+const freerasp = Platform.OS !== 'web' && !isExpoGo
+  ? require('freerasp-react-native')
+  : {
+      setThreatListeners: async () => {},
+      talsecStart: async () => 'skipped',
+      removeThreatListener: () => {},
+    };
+
+type ThreatEventActions = {
+  privilegedAccess?: () => void;
+  simulator?: () => void;
+  secureHardwareNotAvailable?: () => void;
+  passcode?: () => void;
+  deviceID?: () => void;
+  devMode?: () => void;
+  adbEnabled?: () => void;
+};
+
+const { setThreatListeners, talsecStart, removeThreatListener } = freerasp;
+
 
 // Define the Talsec configuration as a factory to ensure fresh arrays/objects on every init 
 const getTalsecConfig = () => ({
