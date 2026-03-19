@@ -45,20 +45,15 @@ export default function DeviceHealth() {
     const rootDetected = rooted || securityState.isRooted;
     const emulatorDetected = emulator || securityState.isEmulator;
     const tamperedDetected = hasTestKeys || securityState.isTampered;
-    const devModeDetected = securityState.isDevMode;
-    const adbDetected = securityState.isADBEnabled;
-
     if (!reportedThisSession.current && user) {
       reportedThisSession.current = true;
 
-      const hasRisk = rootDetected || emulatorDetected || tamperedDetected || devModeDetected || adbDetected;
+      const hasRisk = rootDetected || emulatorDetected || tamperedDetected;
 
       const details = [
         rootDetected ? 'Root Access' : '',
         emulatorDetected ? 'Emulator' : '',
         tamperedDetected ? 'System Tampering' : '',
-        devModeDetected ? 'Developer Options' : '',
-        adbDetected ? 'USB Debugging' : '',
       ].filter(Boolean).join(', ');
 
       recordScan(
@@ -85,9 +80,8 @@ export default function DeviceHealth() {
   const isTampered = localHealth.hasTestKeys || securityState.isTampered;
   const isPasscodeSet = securityState.passcodeSet;
 
-  // Developer mode is a risk, but maybe not "Critical" (Red) unless paired with Root. 
-  // For this logic, we'll keep it as a contributor to "Not Safe" but maybe use Orange in UI if we had that granularity.
-  const isSafe = !isRooted && !isEmulator && isPasscodeSet !== false && !securityState.isDevMode && !securityState.isADBEnabled && securityState.status === 'GREEN';
+  // Developer mode is a risk, but currently hidden as per user request.
+  const isSafe = !isRooted && !isEmulator && isPasscodeSet !== false && securityState.status === 'GREEN';
 
   if (loading && !securityState.status) return (
     <View style={styles.loadingContainer}>
@@ -141,18 +135,6 @@ export default function DeviceHealth() {
             safe={isPasscodeSet !== false}
             icon="lock-closed"
           />
-          <HealthItem
-            label="Developer Options"
-            value={securityState.isDevMode ? "Enabled" : "Disabled"}
-            safe={!securityState.isDevMode}
-            icon="code-slash"
-          />
-          <HealthItem
-            label="USB Debugging"
-            value={securityState.isADBEnabled ? "Enabled" : "Disabled"}
-            safe={!securityState.isADBEnabled}
-            icon="construct"
-          />
         </View>
       </ScrollView>
 
@@ -167,9 +149,11 @@ export default function DeviceHealth() {
             <Text style={styles.warningText}>
               • Emulators may not accurately reflect real-world security.
             </Text>
-            <Text style={styles.warningText}>
-              • A screen lock (Passcode/Biometrics) protects your data if lost.
-            </Text>
+            {isPasscodeSet === false && (
+              <Text style={styles.warningText}>
+                • Set a screen lock (Passcode/Biometrics) to protect your data.
+              </Text>
+            )}
           </View>
         </View>
       )}
