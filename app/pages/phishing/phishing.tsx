@@ -1,5 +1,5 @@
 import { useAuth } from '@/services/auth/authContext'
-import { analyzePhisingAttempt } from '@/services/calls/gemini'
+import { usePhishingTFLite } from '@/src/hooks/usePhishingTFLite'
 import { safeBrowsingCheck } from '@/services/calls/safeBrowsing'
 import { db } from '@/services/firebase/firebase'
 import { setLastPhishingResult } from '@/services/storage/phishingStore'
@@ -128,6 +128,7 @@ function PhishingScanHeader({ activeTab, setActiveTab, text, setText, loading, o
 
 export default function Phishing() {
   const { user } = useAuth();
+  const { analyze: analyzeWithTFLite, isReady } = usePhishingTFLite();
   const [activeTab, setActiveTab] = useState<Tab>('Email')
   const [text, setText] = useState('')
   const [scans, setScans] = useState<any[]>(initialScans)
@@ -175,11 +176,11 @@ export default function Phishing() {
 
   const analyze = async () => {
     if (!text.trim()) {
-      const emptyInputAlert = 'Please enter some content to analyze.'
-      Alert.alert('Empty Input', emptyInputAlert)
+      Alert.alert('Empty Input', 'Please enter some content to analyze.')
       return
     }
 
+    // Validate URL if on URL tab
     let urlToAnalyze = text.trim();
     if (activeTab === 'URL') {
       const validation = validateAndNormalizeUrl(urlToAnalyze);
@@ -192,66 +193,81 @@ export default function Phishing() {
 
     setLoading(true);
     try {
-      // 1. Extract URLs from the pasted SMS text using your existing utility
-    const urls = extractUrlsFromText(text);
-    
-    // 2. Local Heuristic Analysis (Check for common Phishing patterns)
-    const phishingKeywords = ['urgent', 'verify', 'locked', 'bank', 'account', 'unusual', 'suspended'];
-    const foundKeywords = phishingKeywords.filter(word => text.toLowerCase().includes(word));
+      // ── Step 1: Run Local TFLite Model (offline, instant) ──────────
+      const tfliteResult = analyzeWithTFLite(text);
 
-    // 3. URL Safety Check (Using your safeBrowsing.ts service)
-    let isUrlMalicious = false;
-    let threatDetails = '';
+      // ── Step 2: Extract URLs & Run Safe Browsing (online) ──────────
+      const urls = extractUrlsFromText(text);
+      let isUrlMalicious = false;
+      let threatDetails = '';
 
-    if (urls.length > 0) {
-      // Check the first URL found in the SMS
-      const sbResult = await safeBrowsingCheck(urls[0]);
-      if (sbResult && sbResult.matches && sbResult.matches.length > 0) {
-        isUrlMalicious = true;
-        threatDetails = sbResult.matches.map((m: any) => m.threatType).join(', ');
+      if (urls.length > 0) {
+        const sbResult = await safeBrowsingCheck(urls[0]);
+        if (sbResult?.matches?.length > 0) {
+          isUrlMalicious = true;
+          threatDetails = sbResult.matches.map((m: any) => m.threatType).join(', ');
+        }
       }
+
+      // ── Step 3: Combine Both Results for Final Verdict ─────────────
+      let risk: 'LOW' | 'MEDIUM' | 'HIGH' = tfliteResult?.risk ?? 'LOW';
+      let score = tfliteResult?.safetyScore ?? 80;
+
+      // Safe Browsing overrides everything — if URL is malicious, always HIGH
+      if (isUrlMalicious) {
+        risk = 'HIGH';
+        score = 5;
+      }
+
+      // ── Step 4: Build reason string ────────────────────────────────
+      let reason = '';
+      if (isUrlMalicious) {
+        reason = `🚨 Malicious URL detected by Google Safe Browsing (${threatDetails}).`;
+      } else if (tfliteResult) {
+        const pct = Math.round(tfliteResult.probability * 100);
+        if (risk === 'HIGH') {
+          reason = `AI model detected phishing patterns with ${pct}% confidence.`;
+        } else if (risk === 'MEDIUM') {
+          reason = `AI model found some suspicious patterns (${pct}% phishing probability). Proceed with caution.`;
+        } else {
+          reason = `AI model found no phishing patterns. Content appears safe (${pct}% phishing probability).`;
+        }
+      } else {
+        reason = 'Model is still loading. Basic analysis used.';
+      }
+
+      // ── Step 5: Store & Navigate ────────────────────────────────────
+      const resultData = {
+        risk,
+        score,
+        reason,
+        content: text,
+        safeBrowsingResult: isUrlMalicious
+          ? `⚠️ THREATS: ${threatDetails}`
+          : '✓ Links appear safe',
+        recommendation: risk === 'HIGH'
+          ? 'Do not click any links. Delete this message immediately.'
+          : risk === 'MEDIUM'
+          ? 'Be cautious. Verify the sender through official channels.'
+          : 'Content appears safe. Stay vigilant.',
+        PhishingType: activeTab,
+        urlIsPresent: urls.length > 0,
+      };
+
+      setLastPhishingResult(resultData);
+      if (user) {
+        const status = risk === 'HIGH' ? 'Dangerous' : risk === 'MEDIUM' ? 'Suspicious' : 'Safe';
+        recordScan(user.id, activeTab, status, text.slice(0, 30), resultData);
+      }
+
+      router.push({ pathname: '/pages/phishing/scan_result' });
+
+    } catch (error) {
+      console.error('Analysis error:', error);
+      Alert.alert('Error', 'An error occurred during analysis.');
+    } finally {
+      setLoading(false);
     }
-
-    // 4. Calculate Risk Score
-    let risk: 'LOW' | 'MEDIUM' | 'HIGH' = 'LOW';
-    let score = 100;
-
-    if (isUrlMalicious) {
-      risk = 'HIGH';
-      score = 20;
-    } else if (foundKeywords.length > 0 || urls.length > 0) {
-      risk = 'MEDIUM';
-      score = 60;
-    }
-
-
-    const resultData = {
-      risk,
-      score,
-      reason: isUrlMalicious 
-        ? `High Risk: Malicious URL detected (${threatDetails}).` 
-        : `Analysis found ${foundKeywords.length} suspicious keywords.`,
-      content: text,
-      safeBrowsingResult: isUrlMalicious ? `⚠️ THREATS: ${threatDetails}` : '✓ Links appear safe',
-      recommendation: risk === 'HIGH' ? 'Do not click links. Delete message.' : 'Proceed with caution.',
-      PhishingType: activeTab,
-      urlIsPresent: urls.length > 0,
-    };
-
-    // 5. Store and Navigate (matching your existing UI flow)
-    setLastPhishingResult(resultData);
-    if (user) {
-      const status = risk === 'HIGH' ? 'Dangerous' : risk === 'MEDIUM' ? 'Suspicious' : 'Safe';
-      recordScan(user.id, 'SMS', status, text.slice(0, 30), resultData);
-    }
-
-    router.push({ pathname: '/pages/phishing/scan_result' })
-  } catch (error) {
-    console.error('Analysis error:', error);
-    Alert.alert('Error', 'An error occurred during analysis.');
-  } finally {
-    setLoading(false);
-  }
   }
 
   const pickImage = async () => {

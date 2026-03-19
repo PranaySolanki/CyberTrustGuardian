@@ -3,7 +3,8 @@
  * On-device malware detection — delegates all ML logic to mlKit.ts.
  */
 import { useCallback, useEffect } from 'react';
-import { useTensorflowModel } from 'react-native-fast-tflite';
+import { Platform } from 'react-native';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import {
   AnalysisResult,
   buildFeatureVector,
@@ -13,11 +14,24 @@ import {
   ruleBasedAnalysis,
 } from './utils/mlKit';
 
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient || Constants.appOwnership === 'expo';
+
+// Only import useTensorflowModel on native platforms and NOT in Expo Go
+const useTensorflowModel =
+  Platform.OS !== 'web' && !isExpoGo
+    ? require('react-native-fast-tflite').useTensorflowModel
+    : undefined;
+
+
+
 export type { AnalysisResult };
 
 export function useTFLiteClassifier() {
+  // On web or Expo Go, skip TFLite entirely — use rule-based fallback
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const plugin = useTensorflowModel(require('../assets/models/apps_detection.tflite'));
+  const plugin = useTensorflowModel
+    ? useTensorflowModel(require('../assets/models/apps_detection.tflite'))
+    : { state: 'not-available' as const, model: null };
 
   useEffect(() => {
     if (plugin.state === 'error') {
