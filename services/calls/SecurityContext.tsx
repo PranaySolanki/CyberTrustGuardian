@@ -45,8 +45,6 @@ type SecurityState = {
     isRooted: boolean;
     isEmulator: boolean;
     isTampered: boolean;
-    isDevMode?: boolean;
-    isADBEnabled?: boolean;
     passcodeSet?: boolean;
     status: 'GREEN' | 'ORANGE' | 'RED';
 };
@@ -63,8 +61,6 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         isRooted: false,
         isEmulator: false,
         isTampered: false,
-        isDevMode: false,
-        isADBEnabled: false,
         passcodeSet: true,
         status: 'GREEN',
     });
@@ -77,7 +73,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             let newStatus: 'GREEN' | 'ORANGE' | 'RED' = 'GREEN';
             if (newState.isRooted || newState.isTampered) {
                 newStatus = 'RED';
-            } else if (newState.isEmulator || newState.passcodeSet === false || newState.isDevMode || newState.isADBEnabled) {
+            } else if (newState.isEmulator || newState.passcodeSet === false) {
                 newStatus = 'ORANGE'; // Warning
             }
 
@@ -104,14 +100,6 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         },
         deviceID: () => {
             // Optional
-        },
-        devMode: () => {
-            console.log('Developer Mode Enabled');
-            updateSecurityState('isDevMode', true);
-        },
-        adbEnabled: () => {
-            console.log('ADB Enabled');
-            updateSecurityState('isADBEnabled', true);
         },
     }), []);
 
