@@ -51,7 +51,7 @@ export default function PhishingScanResult() {
       <Text style={styles.sectionHeader}>URL ANALYSIS</Text>
       <View style={styles.gridContainer}>
         <View style={styles.gridItem}>
-          <Text style={styles.gridLabel}>Safe Browsing</Text>
+          <Text style={styles.gridLabel}>Link Reputation</Text>
           <Text style={[styles.gridValue, { color: safeBrowsingResult?.includes("THREATS") ? "#EF4444" : "#10B981", fontSize: 13 }]}>
             {safeBrowsingResult}
           </Text>
@@ -110,7 +110,7 @@ export default function PhishingScanResult() {
       <Text style={styles.sectionHeader}>URL ANALYSIS</Text>
       <View style={styles.gridContainer}>
         <View style={styles.gridItem}>
-          <Text style={styles.gridLabel}>Safe Browsing</Text>
+          <Text style={styles.gridLabel}>Link Reputation</Text>
           <Text style={[styles.gridValue, { color: safeBrowsingResult?.includes("THREATS") ? "#EF4444" : "#10B981", fontSize: 13 }]}>
             {safeBrowsingResult}
           </Text>
