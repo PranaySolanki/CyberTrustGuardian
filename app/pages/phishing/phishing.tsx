@@ -6,6 +6,7 @@ import { setLastPhishingResult } from '@/services/storage/phishingStore'
 import { recordScan } from '@/services/storage/scanHistory'
 import { extractUrlsFromText, recognizeText } from '@/services/utils/mlKit'
 import { validateAndNormalizeUrl } from '@/services/utils/urlValidator'
+import { analyzePhisingAttempt } from '@/services/calls/gemini'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
@@ -196,47 +197,79 @@ export default function Phishing() {
       // ── Step 1: Run Local TFLite Model (offline, instant) ──────────
       const tfliteResult = analyzeWithTFLite(text);
 
-      // ── Step 2: Extract URLs & Run Safe Browsing (online) ──────────
+      // ── Step 2: Extract URLs & Run Safe Browsing + Gemini (online) ──────────
       const urls = extractUrlsFromText(text);
       let isUrlMalicious = false;
       let threatDetails = '';
 
-      if (urls.length > 0) {
-        const sbResult = await safeBrowsingCheck(urls[0]);
-        if (sbResult?.matches?.length > 0) {
-          isUrlMalicious = true;
-          threatDetails = sbResult.matches.map((m: any) => m.threatType).join(', ');
-        }
+      const [sbResult, geminiResult] = await Promise.all([
+        urls.length > 0 ? safeBrowsingCheck(urls[0]).catch(e => {
+            console.error('SafeBrowsing error', e);
+            return null;
+        }) : Promise.resolve(null),
+        analyzePhisingAttempt(text, activeTab.toUpperCase() as 'EMAIL' | 'SMS' | 'URL').catch(err => {
+            console.error('Gemini Analysis error', err);
+            return null;
+        })
+      ]);
+
+      if (sbResult?.matches?.length > 0) {
+        isUrlMalicious = true;
+        threatDetails = sbResult.matches.map((m: any) => m.threatType).join(', ');
       }
 
       // ── Step 3: Combine Both Results for Final Verdict ─────────────
       let risk: 'LOW' | 'MEDIUM' | 'HIGH' = tfliteResult?.risk ?? 'LOW';
       let score = tfliteResult?.safetyScore ?? 80;
+      let reason = '';
+      let recommendation = risk === 'HIGH'
+          ? 'Do not click any links. Delete this message immediately.'
+          : risk === 'MEDIUM'
+          ? 'Be cautious. Verify the sender through official channels.'
+          : 'Content appears safe. Stay vigilant.';
+
+      // Verdict Upgrade Logic: Let Gemini override
+      if (geminiResult) {
+        const riskLevels = { 'LOW': 1, 'MEDIUM': 2, 'HIGH': 3 };
+        const currentLevel = riskLevels[risk] || 1;
+        const geminiLevel = riskLevels[geminiResult.risk as 'LOW' | 'MEDIUM' | 'HIGH'] || 1;
+
+        if (geminiLevel > currentLevel) {
+          risk = geminiResult.risk as 'LOW' | 'MEDIUM' | 'HIGH';
+          score = geminiResult.score; // Gemini caught a threat, use its score
+        } else if (geminiLevel === currentLevel) {
+          score = geminiResult.score; // Both agree, trust Gemini's more accurate numeric score
+        } else {
+          // TFLite caught a threat that Gemini missed. Maintain paranoia limit.
+          score = Math.min(score, geminiResult.score);
+        }
+        
+        reason = geminiResult.reason;
+        recommendation = geminiResult.recommendation;
+      } else {
+        if (tfliteResult) {
+          const pct = Math.round(tfliteResult.probability * 100);
+          if (risk === 'HIGH') {
+            reason = `AI model detected phishing patterns with ${pct}% confidence.`;
+          } else if (risk === 'MEDIUM') {
+            reason = `AI model found some suspicious patterns (${pct}% phishing probability). Proceed with caution.`;
+          } else {
+            reason = `AI model found no phishing patterns. Content appears safe (${pct}% phishing probability).`;
+          }
+        } else {
+          reason = 'Model is still loading. Basic analysis used.';
+        }
+      }
 
       // Safe Browsing overrides everything — if URL is malicious, always HIGH
       if (isUrlMalicious) {
         risk = 'HIGH';
         score = 5;
-      }
-
-      // ── Step 4: Build reason string ────────────────────────────────
-      let reason = '';
-      if (isUrlMalicious) {
         reason = `🚨 Malicious URL detected by Google Safe Browsing (${threatDetails}).`;
-      } else if (tfliteResult) {
-        const pct = Math.round(tfliteResult.probability * 100);
-        if (risk === 'HIGH') {
-          reason = `AI model detected phishing patterns with ${pct}% confidence.`;
-        } else if (risk === 'MEDIUM') {
-          reason = `AI model found some suspicious patterns (${pct}% phishing probability). Proceed with caution.`;
-        } else {
-          reason = `AI model found no phishing patterns. Content appears safe (${pct}% phishing probability).`;
-        }
-      } else {
-        reason = 'Model is still loading. Basic analysis used.';
+        recommendation = 'Do not click any links. Delete this message immediately.';
       }
 
-      // ── Step 5: Store & Navigate ────────────────────────────────────
+      // ── Step 4: Store & Navigate ────────────────────────────────────
       const resultData = {
         risk,
         score,
@@ -244,12 +277,10 @@ export default function Phishing() {
         content: text,
         safeBrowsingResult: isUrlMalicious
           ? `⚠️ THREATS: ${threatDetails}`
-          : '✓ Links appear safe',
-        recommendation: risk === 'HIGH'
-          ? 'Do not click any links. Delete this message immediately.'
-          : risk === 'MEDIUM'
-          ? 'Be cautious. Verify the sender through official channels.'
-          : 'Content appears safe. Stay vigilant.',
+          : (geminiResult && geminiResult.risk === 'HIGH' 
+              ? '⚠️ THREATS: AI detected a fake or deceptive link' 
+              : '✓ Links appear safe'),
+        recommendation,
         PhishingType: activeTab,
         urlIsPresent: urls.length > 0,
       };
