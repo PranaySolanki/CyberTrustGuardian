@@ -421,19 +421,18 @@ export const buildAnalysisResult = (
     if (isSystemApp) {
         riskScore = Math.round(riskScore * 0.4);
     }
-    // Trusted publishers use many permissions legitimately — reduce risk by 80%
-    const TRUSTED_PUBLISHERS = [
-        // Global Giants
-        'com.google', 'com.whatsapp', 'com.instagram', 'com.facebook',
-        'com.microsoft', 'com.samsung', 'com.spotify', 'com.amazon',
-        'com.netflix', 'com.twitter', 'com.snapchat', 'com.linkedin',
-        'com.apple.android', 'com.adobe', 'com.yahoo', 'com.skype',
-        'org.mozilla', 'com.brave', 'com.opera', 'com.discord',
-        'com.ubercab', 'com.zhiliaoapp.musically', // Uber, TikTok
-
-        // Indian/Regional Context (Based on user's current additions)
-        'com.myairtelapp', 'com.myntra.android', 'com.flipkart.android',
-        'net.one97.paytm', 'com.phonepe.app', 'com.google.android.apps.nbu.paisa.user', // GPay
+    // Very Trusted publishers (Banks, Payments, Core Tech) — safely heavily reduce risk
+    const VERY_TRUSTED_PUBLISHERS = [
+        // Global Core Giants
+        'com.google', 'com.microsoft', 'com.apple.android', 'com.samsung',
+        'android.', 'com.cyberguardian.app', // System apps and this app itself
+        // Indian/Regional Payments, Finance & Gov
+        'net.one97.paytm', 'com.phonepe.app', 
+        'com.nextbillion.groww', // Groww
+        'in.indwealth', // INDmoney
+        'com.fampay.in', // FamApp
+        'com.dhan.live', // Dhan
+        'com.digilocker.android', // Digilocker
         // Major Indian Banks
         'com.sbi.YONO', 'com.sbi.SBIFreedomPlus', // SBI
         'com.snapwork.hdfc', // HDFC
@@ -444,10 +443,36 @@ export const buildAnalysisResult = (
         'com.bom.mahaconnect', // Bank of Maharashtra
         'com.canarabank.mobil', // Canara Bank
         'com.infrasoft.ubimobility', // Union Bank of India
-        'com.kotak811mobilebankingapp' // Kotak
+        'com.kotak811mobilebankingapp', // Kotak
+        'com.bankofbaroda.mconnect', // Bank of Baroda
+        'com.indusind.indusmobilesmart', // IndusInd
+        'com.idfcfirstbank.optimus', // IDFC FIRST
+        'com.yesbank', // YES Bank
+        'com.hdfcbank.payzapp' // PayZapp
     ];
-    if (TRUSTED_PUBLISHERS.some(pub => packageName.startsWith(pub))) {
-        riskScore = Math.round(riskScore * 0.25);
+
+    // General Trusted publishers (Social Media, E-commerce, Entertainment) — moderate reduction
+    const GENERAL_TRUSTED_PUBLISHERS = [
+        // Social Media & Entertainment
+        'com.whatsapp', 'com.instagram', 'com.facebook', 'com.twitter', 'com.snapchat', 'com.linkedin',
+        'com.spotify', 'com.netflix', 'com.discord', 'com.zhiliaoapp.musically', // TikTok
+        // Utilities, E-commerce & Others
+        'com.amazon', 'in.amazon', 'com.myntra.android', 'com.flipkart.android', 'com.grofers.customerapp', // Blinkit
+        'com.ubercab', 'app.zophop', // Chalo
+        'com.myairtelapp', 'com.indeed.android.jobsearch', // Indeed
+        'host.exp.exponent', // Expo Go
+        'com.cv.docscanner', // Doc Scanner
+        'com.gombosdev.ampere', // Ampere
+        'com.allindiabullion', // AIB
+        'com.buyhatke.assistant', // Buyhatke
+        // Browsers & Adobe
+        'com.adobe', 'com.yahoo', 'com.skype', 'org.mozilla', 'com.brave', 'com.opera'
+    ];
+
+    if (VERY_TRUSTED_PUBLISHERS.some(pub => packageName.startsWith(pub))) {
+        riskScore = Math.round(riskScore * 0.15); // Heavier dampener (e.g. 100 -> 15) for banking/finance apps
+    } else if (GENERAL_TRUSTED_PUBLISHERS.some(pub => packageName.startsWith(pub))) {
+        riskScore = Math.round(riskScore * 0.40); // Moderate dampener (e.g. 100 -> 40) for general trusted apps
     }
 
     riskScore = isNaN(riskScore) ? 0 : Math.min(100, Math.max(0, riskScore));
