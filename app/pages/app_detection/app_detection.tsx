@@ -1,4 +1,3 @@
-import { useAuth } from "@/services/auth/authContext";
 import { clearLastAppResult } from "@/services/storage/appStore";
 import useAppScanner, { AppResult } from "@/services/useAppScanner";
 import { useTFLiteClassifier } from "@/services/useTFLiteModel";
@@ -55,14 +54,14 @@ const AppItemRow = React.memo(({ item, onScan, getIcon }: { item: AppItem, onSca
     </View>
   );
 });
+AppItemRow.displayName = 'AppItemRow';
 
-export default function AppDetection() {
+export default function AppDetection({ isMainScreen }: { isMainScreen?: boolean }) {
   // ✅ STATE MUST BE HERE (before return)
 
   const { apps, loading: appsLoading, error: appsError, getAppPermissions, getAppIcon } = useAppScanner();
 
   const { predict, isReady } = useTFLiteClassifier();
-  const { user } = useAuth();
   const [selectedApk, setSelectedApk] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const router = useRouter();
@@ -223,11 +222,25 @@ export default function AppDetection() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Standard Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
-            <Ionicons name="arrow-back" size={24} color="#1E293B" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>App Analyzer</Text>
-          <View style={{ width: 40 }} />
+          {isMainScreen ? (
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: "#E0ECFF", justifyContent: "center", alignItems: "center", marginRight: 10 }}>
+                <Ionicons name="shield-checkmark" size={24} color="#2563EB" />
+              </View>
+              <View>
+                <Text style={{ fontSize: 18, fontWeight: "700", color: "#0F172A" }}>CyberTrust Guardian</Text>
+                <Text style={{ fontSize: 12, color: "#64748B", fontWeight: "500" }}>App Malware Analyzer</Text>
+              </View>
+            </View>
+          ) : (
+            <>
+              <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+                <Ionicons name="arrow-back" size={24} color="#1E293B" />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>App Malware Analyzer</Text>
+              <View style={{ width: 40 }} />
+            </>
+          )}
         </View>
 
         {/* ✅ APK SELECTOR BLOCK */}

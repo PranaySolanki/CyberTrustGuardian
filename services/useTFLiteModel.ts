@@ -24,14 +24,14 @@ const useTensorflowModel =
 
 
 
+const appModelAsset = require('../assets/models/apps_detection.tflite');
+const useFallbackModel = () => ({ state: 'not-available' as const, model: null });
+
 export type { AnalysisResult };
 
 export function useTFLiteClassifier() {
-  // On web or Expo Go, skip TFLite entirely — use rule-based fallback
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const plugin = useTensorflowModel
-    ? useTensorflowModel(require('../assets/models/apps_detection.tflite'))
-    : { state: 'not-available' as const, model: null };
+  const useModelHook = useTensorflowModel || useFallbackModel;
+  const plugin = useModelHook(appModelAsset);
 
   useEffect(() => {
     if (plugin.state === 'error') {

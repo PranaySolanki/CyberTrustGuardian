@@ -1,23 +1,19 @@
-import { AuthProvider } from "@/services/auth/authContext";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { LogBox } from 'react-native';//header
-import { SecurityProvider } from "../services/calls/SecurityContext";
+import { LogBox } from 'react-native';
 
 // Ignore all log notifications
 LogBox.ignoreAllLogs();
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <SecurityProvider>
-        <Stack>
-          <Stack.Screen name="auth" options={{ headerShown: false }} />
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="pages" options={{ headerShown: false }} />
-        </Stack>
-        <StatusBar style="dark" />
-      </SecurityProvider>
-    </AuthProvider>
+    <>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="pages" />
+      </Stack>
+      <StatusBar style="dark" />
+    </>
   );
 }
+
