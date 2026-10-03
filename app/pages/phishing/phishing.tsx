@@ -1,17 +1,13 @@
-import { useAuth } from '@/services/auth/authContext'
-import { usePhishingTFLite } from '@/src/hooks/usePhishingTFLite'
+import { analyzePhisingAttempt } from '@/services/calls/gemini'
 import { safeBrowsingCheck } from '@/services/calls/safeBrowsing'
-import { db } from '@/services/firebase/firebase'
 import { setLastPhishingResult } from '@/services/storage/phishingStore'
-import { recordScan } from '@/services/storage/scanHistory'
 import { extractUrlsFromText, recognizeText } from '@/services/utils/mlKit'
 import { validateAndNormalizeUrl } from '@/services/utils/urlValidator'
-import { analyzePhisingAttempt } from '@/services/calls/gemini'
+import { usePhishingTFLite } from '@/src/hooks/usePhishingTFLite'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
-import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore'
-import React, { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -66,11 +62,7 @@ function PhishingScanHeader({ activeTab, setActiveTab, text, setText, loading, o
     <View style={styles.content}>
       {/* Standard Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
-          <Ionicons name="arrow-back" size={24} color="#1E293B" />
-        </TouchableOpacity>
         <Text style={styles.headerTitle}>Phishing Detector</Text>
-        <View style={{ width: 40 }} />
       </View>
 
       <View style={styles.card}>
@@ -117,51 +109,22 @@ function PhishingScanHeader({ activeTab, setActiveTab, text, setText, loading, o
         <Text style={styles.tip}>• Be suspicious of urgent or threatening messages</Text>
       </View>
 
-      <View style={styles.recent}>
+      {/* <View style={styles.recent}>
         <View style={styles.recentHeader}>
           <Text style={styles.recentTitle}>Recent Scans</Text>
           <Text style={styles.scanCount}>{scansLength} scans</Text>
         </View>
-      </View>
+      </View> */}
     </View>
   )
 }
 
 export default function Phishing() {
-  const { user } = useAuth();
   const { analyze: analyzeWithTFLite, isReady } = usePhishingTFLite();
   const [activeTab, setActiveTab] = useState<Tab>('Email')
   const [text, setText] = useState('')
-  const [scans, setScans] = useState<any[]>(initialScans)
+  const [scans] = useState<any[]>(initialScans)
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!user) return;
-
-    // Listen to History (Fetch recent and filter client-side to avoid index issues)
-    const historyRef = collection(db, 'users', user.id, 'history');
-    const q = query(
-      historyRef,
-      orderBy('timestamp', 'desc'),
-      limit(20)
-    );
-
-    const unsub = onSnapshot(q, (snapshot) => {
-      const historyData = snapshot.docs
-        .map(d => ({
-          id: d.id,
-          ...d.data(),
-          // Format timestamp for display
-          time: d.data().timestamp?.toDate
-            ? d.data().timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            : 'Just now'
-        }))
-        .filter((s: any) => ['Email', 'SMS', 'URL'].includes(s.type));
-      setScans(historyData);
-    });
-
-    return () => unsub();
-  }, [user]);
 
   const handleRecentPress = (scan: any) => {
     // Navigate to scan_result with parameters
@@ -204,12 +167,12 @@ export default function Phishing() {
 
       const [sbResult, geminiResult] = await Promise.all([
         urls.length > 0 ? safeBrowsingCheck(urls[0]).catch(e => {
-            console.error('SafeBrowsing error', e);
-            return null;
+          console.error('SafeBrowsing error', e);
+          return null;
         }) : Promise.resolve(null),
         analyzePhisingAttempt(text, activeTab.toUpperCase() as 'EMAIL' | 'SMS' | 'URL').catch(err => {
-            console.error('Gemini Analysis error', err);
-            return null;
+          console.error('Gemini Analysis error', err);
+          return null;
         })
       ]);
 
@@ -223,8 +186,8 @@ export default function Phishing() {
       let score = tfliteResult?.safetyScore ?? 80;
       let reason = '';
       let recommendation = risk === 'HIGH'
-          ? 'Do not click any links. Delete this message immediately.'
-          : risk === 'MEDIUM'
+        ? 'Do not click any links. Delete this message immediately.'
+        : risk === 'MEDIUM'
           ? 'Be cautious. Verify the sender through official channels.'
           : 'Content appears safe. Stay vigilant.';
 
@@ -243,7 +206,7 @@ export default function Phishing() {
           // TFLite caught a threat that Gemini missed. Maintain paranoia limit.
           score = Math.min(score, geminiResult.score);
         }
-        
+
         reason = geminiResult.reason;
         recommendation = geminiResult.recommendation;
       } else {
@@ -277,20 +240,15 @@ export default function Phishing() {
         content: text,
         safeBrowsingResult: isUrlMalicious
           ? `⚠️ THREATS: ${threatDetails}`
-          : (geminiResult && geminiResult.risk === 'HIGH' 
-              ? '⚠️ THREATS: AI detected a fake or deceptive link' 
-              : '✓ Links appear safe'),
+          : (geminiResult && geminiResult.risk === 'HIGH'
+            ? '⚠️ THREATS: AI detected a fake or deceptive link'
+            : '✓ Links appear safe'),
         recommendation,
         PhishingType: activeTab,
         urlIsPresent: urls.length > 0,
       };
 
       setLastPhishingResult(resultData);
-      if (user) {
-        const status = risk === 'HIGH' ? 'Dangerous' : risk === 'MEDIUM' ? 'Suspicious' : 'Safe';
-        recordScan(user.id, activeTab, status, text.slice(0, 30), resultData);
-      }
-
       router.push({ pathname: '/pages/phishing/scan_result' });
 
     } catch (error) {
@@ -381,7 +339,7 @@ export default function Phishing() {
     <SafeAreaView style={styles.container}>
       <FlatList
         data={scans}
-        keyExtractor={i => i.id}
+        keyExtractor={(item: any) => item.id}
         renderItem={ScanHistory}
         ListHeaderComponent={
           <PhishingScanHeader
@@ -415,9 +373,8 @@ export default function Phishing() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, marginBottom: 20 },
-  headerTitle: { fontSize: 18, fontWeight: "700", color: "#0F172A", letterSpacing: 0.5 },
-  iconBtn: { padding: 8, backgroundColor: "#FFF", borderRadius: 12, borderWidth: 1, borderColor: "#E2E8F0" },
+  header: { alignItems: "center", justifyContent: "center", marginBottom: 20 },
+  headerTitle: { width: "100%", textAlign: "center", fontSize: 18, fontWeight: "700", color: "#0F172A", letterSpacing: 0.5 },
 
   content: { padding: 16 },
   card: {

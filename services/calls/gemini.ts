@@ -1,11 +1,10 @@
 import { GoogleGenerativeAI, Schema, SchemaType } from "@google/generative-ai";
 
 
-const raw_api_key = (process.env.EXPO_PUBLIC_GEMINI_API_KEY)?.toString();
+// Feature flag: set to true to re-enable Gemini AI, false to use local TFLite only
+export const ENABLE_GEMINI = false;
 
-if (!raw_api_key) {
-  throw new Error("EXPO_PUBLIC_GEMINI_API_KEY environment variable is not set");
-}
+const raw_api_key = (process.env.EXPO_PUBLIC_GEMINI_API_KEY)?.toString();
 
 function rot13(str: string) {
   return str.replace(/[A-Za-z]/g, (c) => {
@@ -14,57 +13,62 @@ function rot13(str: string) {
   });
 }
 
-// Decode the ROT13-encoded value stored in the env var
-const api_key = rot13(raw_api_key);
+let genAI: GoogleGenerativeAI | null = null;
+let model: any = null;
+let visionModel: any = null;
 
+if (ENABLE_GEMINI && raw_api_key) {
+  const api_key = rot13(raw_api_key);
+  genAI = new GoogleGenerativeAI(api_key);
 
-const genAI = new GoogleGenerativeAI(api_key);
-
-const schema: Schema = {
-  type: SchemaType.OBJECT,
-  description: "Security analysis result",
-  properties: {
-    risk: {
-      type: SchemaType.STRING,
-      description: "Risk level: LOW, MEDIUM, or HIGH",
-      nullable: false,
+  const schema: Schema = {
+    type: SchemaType.OBJECT,
+    description: "Security analysis result",
+    properties: {
+      risk: {
+        type: SchemaType.STRING,
+        description: "Risk level: LOW, MEDIUM, or HIGH",
+        nullable: false,
+      },
+      score: {
+        type: SchemaType.NUMBER,
+        description: "Safety score from 0-100",
+        nullable: false,
+      },
+      reason: {
+        type: SchemaType.STRING,
+        description: "Brief explanation of why this risk level was assigned",
+        nullable: false,
+      },
+      recommendation: {
+        type: SchemaType.STRING,
+        description: "Actionable advice in 1-2 sentences",
+        nullable: false,
+      },
     },
-    score: {
-      type: SchemaType.NUMBER,
-      description: "Safety score from 0-100",
-      nullable: false,
-    },
-    reason: {
-      type: SchemaType.STRING,
-      description: "Brief explanation of why this risk level was assigned",
-      nullable: false,
-    },
-    recommendation: {
-      type: SchemaType.STRING,
-      description: "Actionable advice in 1-2 sentences",
-      nullable: false,
-    },
-  },
-  required: ["risk", "score", "reason", "recommendation"],
-};
+    required: ["risk", "score", "reason", "recommendation"],
+  };
 
-// Now pass it to the model
-const model = genAI.getGenerativeModel({
-  model: "gemini-2.5-flash-lite",
-  generationConfig: {
-    responseMimeType: "application/json",
-    responseSchema: schema,
-  },
-});
+  model = genAI.getGenerativeModel({
+    model: "gemini-2.5-flash-lite",
+    generationConfig: {
+      responseMimeType: "application/json",
+      responseSchema: schema,
+    },
+  });
 
-// Vision model for image analysis (no schema needed for QR extraction)
-const visionModel = genAI.getGenerativeModel({
-  model: "gemini-2.5-flash-lite",
-});
+  visionModel = genAI.getGenerativeModel({
+    model: "gemini-2.5-flash-lite",
+  });
+}
 
 
 
 export const analyzePhisingAttempt = async (content: string, type: 'EMAIL' | 'SMS' | 'URL') => {
+  if (!ENABLE_GEMINI || !model) {
+    console.log('[Gemini] Gemini is temporarily disabled. Skipping analysis.');
+    return null;
+  }
   const typeSpecificInstructions = {
     EMAIL: "Focus on brand impersonation, generic greetings, and mismatched link destinations, senders email address, tonality.",
     SMS: "Focus on extreme urgency, link shorteners, and requests for OTP/KYC updates online via links if it tells to visit a physical branch then it might be safe yet not completely safe.",
@@ -116,6 +120,10 @@ export const analyzePhisingAttempt = async (content: string, type: 'EMAIL' | 'SM
 };
 
 export const analyzeQrCode = async (content: string) => {
+  if (!ENABLE_GEMINI || !model) {
+    console.log('[Gemini] Gemini is temporarily disabled. Skipping QR analysis.');
+    return null;
+  }
   const prompt = `
         ACT AS A SPECIALIST IN QR THREAT INTELLIGENCE (QUISHING).
         YOUR TASK: Analyze the provided URL extracted from a QR Code scan.
@@ -165,6 +173,10 @@ export const analyzeQrCode = async (content: string) => {
  * @returns The QR code content as a string, or null if no QR code found
  */
 export const extractQrCodeFromImage = async (imageUri: string): Promise<string | null> => {
+  if (!ENABLE_GEMINI || !visionModel) {
+    console.log('[Gemini] Gemini is temporarily disabled. Skipping Vision QR extraction.');
+    return null;
+  }
   try {
     // Convert image URI to base64
     let imageBase64: string;
@@ -284,6 +296,10 @@ export const extractQrCodeFromImage = async (imageUri: string): Promise<string |
 
 
 export const analyzeAppSafety = async (appName: string, packageName: string, permissions: string[]) => {
+  if (!ENABLE_GEMINI || !model) {
+    console.log('[Gemini] Gemini is temporarily disabled. Skipping App Safety analysis.');
+    return null;
+  }
   const systemInstruction = `
     ACT AS A SENIOR MOBILE SECURITY ANALYST. 
     YOUR OUTPUT MUST BE A JSON VERDICT. 
