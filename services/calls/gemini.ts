@@ -66,7 +66,7 @@ if (ENABLE_GEMINI && raw_api_key) {
 
 export const analyzePhisingAttempt = async (content: string, type: 'EMAIL' | 'SMS' | 'URL') => {
   if (!ENABLE_GEMINI || !model) {
-    console.log('[Gemini] Gemini is temporarily disabled. Skipping analysis.');
+    //console.log('[Gemini] Gemini is temporarily disabled. Skipping analysis.');
     return null;
   }
   const typeSpecificInstructions = {

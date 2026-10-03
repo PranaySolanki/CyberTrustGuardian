@@ -2,6 +2,7 @@ import { analyzePhisingAttempt } from '@/services/calls/gemini'
 import { safeBrowsingCheck } from '@/services/calls/safeBrowsing'
 import { setLastPhishingResult } from '@/services/storage/phishingStore'
 import { extractUrlsFromText, recognizeText } from '@/services/utils/mlKit'
+import { extractFlaggedWords } from '@/services/utils/phishingKeywords'
 import { validateAndNormalizeUrl } from '@/services/utils/urlValidator'
 import { usePhishingTFLite } from '@/src/hooks/usePhishingTFLite'
 import { Ionicons } from '@expo/vector-icons'
@@ -233,6 +234,7 @@ export default function Phishing() {
       }
 
       // ── Step 4: Store & Navigate ────────────────────────────────────
+      const flaggedWords = extractFlaggedWords(text);
       const resultData = {
         risk,
         score,
@@ -246,6 +248,7 @@ export default function Phishing() {
         recommendation,
         PhishingType: activeTab,
         urlIsPresent: urls.length > 0,
+        flaggedWords,
       };
 
       setLastPhishingResult(resultData);

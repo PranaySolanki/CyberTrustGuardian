@@ -1,4 +1,5 @@
 import { clearLastPhishingResult, getLastPhishingResult } from '@/services/storage/phishingStore';
+import { extractFlaggedWords, parseHighlightedSegments } from '@/services/utils/phishingKeywords';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -15,6 +16,7 @@ export default function PhishingScanResult() {
     recommendation?: string;
     PhishingType?: string;
     urlIsPresent?: boolean;
+    flaggedWords?: string[];
   } | null>(null)
 
   useEffect(() => {
@@ -38,10 +40,13 @@ export default function PhishingScanResult() {
     )
   }
 
-  const { risk, score, reason, content, safeBrowsingResult, recommendation, PhishingType, urlIsPresent } = data;
+  const { risk, score, reason, content, safeBrowsingResult, recommendation, PhishingType, urlIsPresent, flaggedWords } = data;
   const isHighRisk = risk === 'HIGH';
   const isMediumRisk = risk === 'MEDIUM';
   const isSafe = risk === 'LOW' || risk === 'SAFE';
+
+  const wordsList = flaggedWords && flaggedWords.length > 0 ? flaggedWords : extractFlaggedWords(content || '');
+  const segments = parseHighlightedSegments(content || '', wordsList);
 
   // Dynamic Theme Colors
   const themeColor = isHighRisk ? "#EF4444" : isMediumRisk ? "#F59E0B" : "#10B981";
@@ -131,12 +136,39 @@ export default function PhishingScanResult() {
           </View>
         </View>
 
-        {/* Content Details */}
+        {/* Flagged Suspicious Terms */}
+        {wordsList.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionHeader}>FLAGGED SUSPICIOUS TERMS ({wordsList.length})</Text>
+            <View style={styles.badgeWrap}>
+              {wordsList.map((word, idx) => (
+                <View key={idx} style={styles.flaggedBadge}>
+                  <Ionicons name="warning" size={14} color="#DC2626" />
+                  <Text style={styles.flaggedBadgeText}>{word}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Content Details with Inline Highlights */}
         <View style={styles.section}>
           <Text style={styles.sectionHeader}>ANALYZED CONTENT</Text>
           <View style={styles.pkgContainer}>
-            <Text style={styles.pkgLabel}>Content Preview</Text>
-            <Text style={styles.pkgValue} numberOfLines={4}>{content}</Text>
+            <Text style={styles.pkgLabel}>
+              {wordsList.length > 0 ? "Content Preview (Flagged terms highlighted in red)" : "Content Preview"}
+            </Text>
+            <Text style={styles.pkgValue}>
+              {segments.map((part, index) =>
+                part.isFlagged ? (
+                  <Text key={index} style={styles.flaggedTextHighlight}>
+                    {part.text}
+                  </Text>
+                ) : (
+                  <Text key={index}>{part.text}</Text>
+                )
+              )}
+            </Text>
           </View>
         </View>
 
@@ -179,9 +211,14 @@ const styles = StyleSheet.create({
   gridLabel: { fontSize: 12, color: "#64748B", marginBottom: 4 },
   gridValue: { fontSize: 16, fontWeight: "700", color: "#0F172A" },
 
+  badgeWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  flaggedBadge: { flexDirection: "row", alignItems: "center", backgroundColor: "#FEE2E2", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: "#FCA5A5" },
+  flaggedBadgeText: { color: "#991B1B", fontWeight: "700", fontSize: 13, marginLeft: 6 },
+
   pkgContainer: { backgroundColor: "#FFF", padding: 16, borderRadius: 16, borderWidth: 1, borderColor: "#E2E8F0" },
-  pkgLabel: { fontSize: 12, color: "#64748B", marginBottom: 4 },
-  pkgValue: { fontSize: 13, color: "#334155", fontFamily: "monospace" },
+  pkgLabel: { fontSize: 12, color: "#64748B", marginBottom: 8 },
+  pkgValue: { fontSize: 14, color: "#334155", lineHeight: 22 },
+  flaggedTextHighlight: { backgroundColor: "#FEE2E2", color: "#DC2626", fontWeight: "800", paddingHorizontal: 3, borderRadius: 4 },
 
   recCard: { backgroundColor: "#FFF", padding: 16, borderRadius: 12, borderLeftWidth: 4, shadowColor: "#000", shadowOpacity: 0.03, elevation: 2 },
   recTitle: { fontSize: 15, fontWeight: "700", color: "#0F172A", marginBottom: 4 },
