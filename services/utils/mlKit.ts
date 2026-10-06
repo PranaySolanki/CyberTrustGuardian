@@ -1,615 +1,292 @@
 import BarcodeScanning, { BarcodeFormat } from '@react-native-ml-kit/barcode-scanning';
 import TextRecognition, { TextBlock } from '@react-native-ml-kit/text-recognition';
+import offlineModels from '../../assets/models/offline_models.json';
 
-// ── Feature columns matching apps_dataset.csv training order ─────────────────
-export const FEATURE_COLUMNS: string[] = [
-    'ACCESS_ALL_DOWNLOADS',
-    'ACCESS_CACHE_FILESYSTEM',
-    'ACCESS_CHECKIN_PROPERTIES',
-    'ACCESS_COARSE_LOCATION',
-    'ACCESS_COARSE_UPDATES',
-    'ACCESS_FINE_LOCATION',
-    'ACCESS_LOCATION_EXTRA_COMMANDS',
-    'ACCESS_MOCK_LOCATION',
-    'ACCESS_MTK_MMHW',
-    'ACCESS_NETWORK_STATE',
-    'ACCESS_PROVIDER',
-    'ACCESS_SERVICE',
-    'ACCESS_SHARED_DATA',
-    'ACCESS_SUPERUSER',
-    'ACCESS_SURFACE_FLINGER',
-    'ACCESS_WIFI_STATE',
-    'activityCalled',
-    'ACTIVITY_RECOGNITION',
-    'ACCOUNT_MANAGER',
-    'ADD_VOICEMAIL',
-    'ANT',
-    'ANT_ADMIN',
-    'AUTHENTICATE_ACCOUNTS',
-    'AUTORUN_MANAGER_LICENSE_MANAGER',
-    'AUTORUN_MANAGER_LICENSE_SERVICE(.autorun)',
-    'BATTERY_STATS',
-    'BILLING',
-    'BIND_ACCESSIBILITY_SERVICE',
-    'BIND_APPWIDGET',
-    'BIND_CARRIER_MESSAGING_SERVICE',
-    'BIND_DEVICE_ADMIN',
-    'BIND_DREAM_SERVICE',
-    'BIND_GET_INSTALL_REFERRER_SERVICE',
-    'BIND_INPUT_METHOD',
-    'BIND_NFC_SERVICE',
-    'BIND_0TIFICATION_LISTENER_SERVICE',
-    'BIND_PRINT_SERVICE',
-    'BIND_REMOTEVIEWS',
-    'BIND_TEXT_SERVICE',
-    'BIND_TV_INPUT',
-    'BIND_VOICE_INTERACTION',
-    'BIND_VPN_SERVICE',
-    'BIND_WALLPAPER',
-    'BLUETOOTH',
-    'BLUETOOTH_ADMIN',
-    'BLUETOOTH_PRIVILEGED',
-    'BODY_SENSORS',
-    'BRICK',
-    'BROADCAST_PACKAGE_REMOVED',
-    'BROADCAST_SMS',
-    'BROADCAST_STICKY',
-    'BROADCAST_WAP_PUSH',
-    'C2D_MESSAGE',
-    'CALL_PHONE',
-    'CALL_PRIVILEGED',
-    'CAMERA',
-    'CAPTURE_AUDIO_OUTPUT',
-    'CAPTURE_SECURE_VIDEO_OUTPUT',
-    'CAPTURE_VIDEO_OUTPUT',
-    'CHANGE_COMPONENT_ENABLED_STATE',
-    'CHANGE_CONFIGURATION',
-    'CHANGE_DISPLAY_MODE',
-    'CHANGE_NETWORK_STATE',
-    'CHANGE_WIFI_MULTICAST_STATE',
-    'CHANGE_WIFI_STATE',
-    'CHECK_LICENSE',
-    'CLEAR_APP_CACHE',
-    'CLEAR_APP_USER_DATA',
-    'CONTROL_LOCATION_UPDATES',
-    'DATABASE_INTERFACE_SERVICE',
-    'DELETE_CACHE_FILES',
-    'DELETE_PACKAGES',
-    'DEVICE_POWER',
-    'DIAG0STIC',
-    'DISABLE_KEYGUARD',
-    'DOWNLOAD_SERVICE',
-    'DOWNLOAD_WITHOUT_0TIFICATION',
-    'DUMP',
-    'EXPAND_STATUS_BAR',
-    'EXTENSION_PERMISSION',
-    'FACTORY_TEST',
-    'FLASHLIGHT',
-    'FORCE_BACK',
-    'FULLSCREEN.FULL',
-    'GET_ACCOUNTS',
-    'GET_PACKAGE_SIZE',
-    'GET_TASKS',
-    'GET_TOP_ACTIVITY_INFO',
-    'GLOBAL_SEARCH',
-    'GOOGLE_AUTH',
-    'GOOGLE_PHOTOS',
-    'HARDWARE_TEST',
-    'INJECT_EVENTS',
-    'INSTALL_LOCATION_PROVIDER',
-    'INSTALL_PACKAGES',
-    'INSTALL_SHORTCUT',
-    'INTERACT_ACROSS_USERS',
-    'INTERNAL_SYSTEM_WINDOW',
-    'INTERNET',
-    'JPUSH_MESSAGE',
-    'KILL_BACKGROUND_PROCESSES',
-    'LOCATION_HARDWARE',
-    'MANAGE_ACCOUNTS',
-    'MANAGE_APP_TOKENS',
-    'MANAGE_DOCUMENTS',
-    'MAPS_RECEIVE',
-    'MASTER_CLEAR',
-    'MEDIA_BUTTON',
-    'MEDIA_CONTENT_CONTROL',
-    'MESSAGE',
-    'MODIFY_AUDIO_SETTINGS',
-    'MODIFY_PHONE_STATE',
-    'MOUNT_FORMAT_FILESYSTEMS',
-    'MOUNT_UNMOUNT_FILESYSTEMS',
-    'NFC',
-    'PERSISTENT_ACTIVITY',
-    'PERMISSION',
-    'PERMISSION_RUN_TASKS',
-    'PLUGIN',
-    'PROCESS_OUTGOING_CALLS',
-    'READ',
-    'READ_ATTACHMENT',
-    'READ_AVESTTINGS',
-    'READ_CALENDAR',
-    'READ_CALL_LOG',
-    'READ_CONTACTS',
-    'READ_CONTENT_PROVIDER',
-    'READ_DATA',
-    'READ_DATABASES',
-    'READ_EXTERNAL_STORAGE',
-    'READ_FRAME_BUFFER',
-    'READ_GMAIL',
-    'READ_GSERVICES',
-    'READ_HISTORY_BOOKMARKS',
-    'READ_INPUT_STATE',
-    'READ_LOGS',
-    'READ_MESSAGES',
-    'READ_OWNER_DATA',
-    'READ_PHONE_STATE',
-    'READ_PROFILE',
-    'READ_SETTINGS',
-    'READ_SMS',
-    'READ_SOCIAL_STREAM',
-    'READ_SYNC_SETTINGS',
-    'READ_SYNC_STATS',
-    'READ_USER_DICTIONARY',
-    'READ_VOICEMAIL',
-    'REBOOT',
-    'RECEIVE',
-    'RECEIVE_BOOT_COMPLETED',
-    'RECEIVE_MMS',
-    'RECEIVE_SIGNED_DATA_RESULT',
-    'RECEIVE_SMS',
-    'RECEIVE_USER_PRESENT',
-    'RECEIVE_WAP_PUSH',
-    'RECORD_AUDIO',
-    'REORDER_TASKS',
-    'RESPOND',
-    'RESTART_PACKAGES',
-    'REQUEST',
-    'SDCARD_WRITE',
-    'SEND',
-    'SEND_RESPOND_VIA_MESSAGE',
-    'SEND_SMS',
-    'SET_ACTIVITY_WATCHER',
-    'SET_ALARM',
-    'SET_ALWAYS_FINISH',
-    'SET_ANIMATION_SCALE',
-    'SET_DEBUG_APP',
-    'SET_ORIENTATION',
-    'SET_POINTER_SPEED',
-    'SET_PREFERRED_APPLICATIONS',
-    'SET_PROCESS_LIMIT',
-    'SET_TIME',
-    'SET_TIME_ZONE',
-    'SET_WALLPAPER',
-    'SET_WALLPAPER_HINTS',
-    'SIGNAL_PERSISTENT_PROCESSES',
-    'STATUS_BAR',
-    'STORAGE',
-    'SUBSCRIBED_FEEDS_READ',
-    'SUBSCRIBED_FEEDS_WRITE',
-    'SYSTEM_ALERT_WINDOW',
-    'TRANSMIT_IR',
-    'UNINSTALL_SHORTCUT',
-    'UPDATE_DEVICE_STATS',
-    'USES_POLICY_FORCE_LOCK',
-    'USE_CREDENTIALS',
-    'USE_FINGERPRINT',
-    'USE_SIP',
-    'VIBRATE',
-    'WAKE_LOCK',
-    'WRITE',
-    'WRITE_APN_SETTINGS',
-    'WRITE_AVSETTING',
-    'WRITE_CALENDAR',
-    'WRITE_CALL_LOG',
-    'WRITE_CONTACTS',
-    'WRITE_DATA',
-    'WRITE_DATABASES',
-    'WRITE_EXTERNAL_STORAGE',
-    'WRITE_GSERVICES',
-    'WRITE_HISTORY_BOOKMARKS',
-    'WRITE_INTERNAL_STORAGE',
-    'WRITE_MEDIA_STORAGE',
-    'WRITE_OWNER_DATA',
-    'WRITE_PROFILE',
-    'WRITE_SECURE_SETTINGS',
-    'WRITE_SETTINGS',
-    'WRITE_SMS',
-    'WRITE_SOCIAL_STREAM',
-    'WRITE_SYNC_SETTINGS',
-    'WRITE_USER_DICTIONARY',
-    'WRITE_VOICEMAIL',
-    'Ljava/lang/reflect/Method;->invoke',
-    'Ljavax/crypto/Cipher;->doFinal',
-    'Ljava/lang/Runtime;->exec', 'Ljava/lang/System;->load',
-    'Ldalvik/system/DexClassLoader;->loadClass',
-    'Ljava/lang/System;->loadLibrary',
-    'Ljava/net/URL;->openConnection',
-    'Landroid/hardware/Camera;->open',
-    'Landroid/hardware/Camera;->takePicture',
-    'Landroid/telephony/SmsManager;->sendMultipartTextMessage',
-    'Landroid/telephony/SmsManager;->sendTextMessage',
-    'Landroid/media/AudioRecord;->startRecording',
-    'Landroid/telephony/TelephonyManager;->getCellLocation',
-    'Lcom/google/android/gms/location/LocationClient;->getLastLocation',
-    'Landroid/location/LocationManager;->getLastK0wnLocation',
-    'Landroid/telephony/TelephonyManager;->getDeviceId',
-    'Landroid/content/pm/PackageManager;->getInstalledApplications',
-    'Landroid/content/pm/PackageManager;->getInstalledPackages',
-    'Landroid/telephony/TelephonyManager;->getLine1Number',
-    'Landroid/telephony/TelephonyManager;->getNetworkOperator',
-    'Landroid/telephony/TelephonyManager;->getNetworkOperatorName',
-    'Landroid/telephony/TelephonyManager;->getNetworkCountryIso',
-    'Landroid/telephony/TelephonyManager;->getSimOperator',
-    'Landroid/telephony/TelephonyManager;->getSimOperatorName',
-    'Landroid/telephony/TelephonyManager;->getSimCountryIso',
-    'Landroid/telephony/TelephonyManager;->getSimSerialNumber',
-    'Lorg/apache/http/impl/client/DefaultHttpClient;->execute',
-];
-export type AnalysisResult = {
-    risk: 'HIGH' | 'MEDIUM' | 'LOW';
-    /** 0 = completely safe, 100 = fully malicious */
-    riskScore: number;
-    reason: string;
-    recommendation: string;
+export const FEATURE_COLUMNS: string[] = offlineModels.features;
+
+export interface AlgorithmResult {
+  isMalware: boolean;
+  confidence: number; // 0 to 100
+}
+
+export type AlgorithmVerdict = AlgorithmResult;
+
+export interface PureMLAnalysisResult {
+  risk: 'HIGH' | 'MEDIUM' | 'LOW';
+  safetyScore: number; // 0 (Malicious) to 100 (Safe)
+  threatProbability: number;
+  models: {
+    randomForest: AlgorithmResult;
+    svm: AlgorithmResult;
+    naiveBayes: AlgorithmResult;
+  };
+  detectedCapabilities: string[]; // Informational capability tags
+  recommendation: string;
+}
+
+// Map high-level modern capabilities to legacy vector intents so the ML models understand them
+const SEMANTIC_INTENT_MAP: Record<string, string[]> = {
+  BIND_ACCESSIBILITY_SERVICE: ['READ_SMS', 'RECEIVE_SMS', 'READ_EXTERNAL_STORAGE'],
+  SYSTEM_ALERT_WINDOW: ['WRITE_SETTINGS', 'RECEIVE_BOOT_COMPLETED'],
+  BIND_NOTIFICATION_LISTENER_SERVICE: ['RECEIVE_SMS', 'READ_SMS'],
+  POST_NOTIFICATIONS: ['RECEIVE_BOOT_COMPLETED'],
+  QUERY_ALL_PACKAGES: ['GET_ACCOUNTS'],
 };
 
-// ── Permission weights — covers ALL common Android permissions ─────────────────
-// Critical/dangerous (15–20 pts), Sensitive (8–14 pts), Moderate (3–7 pts), Low (1–2 pts)
-const PERMISSION_WEIGHTS: Record<string, number> = {
-    // ── CRITICAL (20) ──────────────────────────────────────────────────────────
-    BRICK: 20, READ_SMS: 20, SEND_SMS: 20, BIND_NOTIFICATION_LISTENER_SERVICE: 20,
-    // ── HIGH DANGER (18) ──────────────────────────────────────────────────────
-    BROADCAST_SMS: 18, RECEIVE_SMS: 18, RECORD_AUDIO: 18,
-    // ── DANGEROUS (14–16) ─────────────────────────────────────────────────────
-    READ_CALL_LOG: 16, WRITE_CALL_LOG: 16,
-    ACCESS_FINE_LOCATION: 15, BIND_ACCESSIBILITY_SERVICE: 15,
-    INSTALL_PACKAGES: 14, MASTER_CLEAR: 14, BIND_DEVICE_ADMIN: 14,
-    INJECT_EVENTS: 14, CALL_PRIVILEGED: 14,
-    // ── SENSITIVE (10–12) ─────────────────────────────────────────────────────
-    RECEIVE_MMS: 12, MODIFY_PHONE_STATE: 12, WRITE_SECURE_SETTINGS: 12,
-    READ_CONTACTS: 12, REBOOT: 12,
-    SYSTEM_ALERT_WINDOW: 10, MOUNT_UNMOUNT_FILESYSTEMS: 10, READ_LOGS: 10,
-    CAMERA: 10, WRITE_CONTACTS: 10, CALL_PHONE: 10,
-    // ── MODERATE RISK (6–8) ───────────────────────────────────────────────────
-    WRITE_SETTINGS: 8, READ_PHONE_STATE: 8,
-    RECEIVE_BOOT_COMPLETED: 8,  // auto-start = persistence mechanism
-    GET_TASKS: 7,               // can see running apps
-    PROCESS_OUTGOING_CALLS: 7,
-    READ_CALENDAR: 6, WRITE_CALENDAR: 6,
-    WRITE_EXTERNAL_STORAGE: 6, ACCESS_COARSE_LOCATION: 6,
-    READ_EXTERNAL_STORAGE: 5, NFC: 5,
-    GET_ACCOUNTS: 5, USE_CREDENTIALS: 5, MANAGE_ACCOUNTS: 5,
-    BLUETOOTH_ADMIN: 5, BLUETOOTH_PRIVILEGED: 5,
-    // ── LOWER RISK (2–4) — common but worth noting ────────────────────────────
-    INTERNET: 2, ACCESS_NETWORK_STATE: 1, ACCESS_WIFI_STATE: 1,
-    BLUETOOTH: 3, BODY_SENSORS: 4,
-    CHANGE_WIFI_STATE: 2, READ_PHONE_NUMBERS: 4,
-    CHANGE_NETWORK_STATE: 2, VIBRATE: 0, WAKE_LOCK: 2,
-    FLASHLIGHT: 1, READ_SYNC_SETTINGS: 1, WRITE_SYNC_SETTINGS: 1,
-    FOREGROUND_SERVICE: 2,
-    POST_NOTIFICATIONS: 1, SCHEDULE_EXACT_ALARM: 3,
-    USE_BIOMETRIC: 3, USE_FINGERPRINT: 3,
-    MODIFY_AUDIO_SETTINGS: 2, DISABLE_KEYGUARD: 3,
-    KILL_BACKGROUND_PROCESSES: 2, RESTART_PACKAGES: 3,
+export const buildFeatureVector = (rawPermissions: string[]): number[] => {
+  const normalized = new Set<string>();
+
+  for (const perm of rawPermissions) {
+    const clean = perm.split('.').pop()?.toUpperCase() || '';
+    normalized.add(clean);
+    
+    // Inject underlying functional intent if it's a modern permission
+    if (SEMANTIC_INTENT_MAP[clean]) {
+      SEMANTIC_INTENT_MAP[clean].forEach(legacy => normalized.add(legacy));
+    }
+  }
+
+  return FEATURE_COLUMNS.map(col => normalized.has(col) ? 1 : 0);
 };
 
-// ── Dangerous COMBINATIONS — pairs that together indicate spyware/malware ─────
-// Score added if BOTH permissions are present
-const DANGEROUS_COMBOS: Array<{ perms: string[]; bonus: number; label: string }> = [
-    { perms: ['RECORD_AUDIO', 'INTERNET'], bonus: 15, label: 'audio exfiltration' },
-    { perms: ['READ_SMS', 'INTERNET'], bonus: 15, label: 'SMS exfiltration' },
-    { perms: ['ACCESS_FINE_LOCATION', 'INTERNET'], bonus: 12, label: 'location tracking' },
-    { perms: ['READ_CONTACTS', 'INTERNET'], bonus: 10, label: 'contact harvesting' },
-    { perms: ['RECEIVE_BOOT_COMPLETED', 'INTERNET'], bonus: 10, label: 'persistent background' },
-    { perms: ['CAMERA', 'INTERNET'], bonus: 8, label: 'camera exfiltration' },
-    { perms: ['READ_CALL_LOG', 'INTERNET'], bonus: 10, label: 'call log exfiltration' },
-    { perms: ['BIND_ACCESSIBILITY_SERVICE', 'INTERNET'], bonus: 15, label: 'accessibility abuse' },
-    { perms: ['SEND_SMS', 'RECEIVE_SMS'], bonus: 12, label: 'SMS intercept & send' },
-    { perms: ['READ_SMS', 'SEND_SMS'], bonus: 12, label: 'full SMS control' },
-    { perms: ['RECEIVE_BOOT_COMPLETED', 'BIND_DEVICE_ADMIN'], bonus: 18, label: 'device admin persistence' },
-    { perms: ['RECORD_AUDIO', 'RECEIVE_BOOT_COMPLETED'], bonus: 14, label: 'background audio recording' },
-    { perms: ['READ_CONTACTS', 'READ_CALL_LOG', 'INTERNET'], bonus: 15, label: 'PII harvesting' },
-];
-
-/** Converts a permission list to a Float32Array in training column order */
-export const buildFeatureVector = (permissions: string[]): Float32Array => {
-    const cleanedPerms = new Set(
-        permissions.map(p => { const parts = p.split('.'); return parts[parts.length - 1]; })
-    );
-    return new Float32Array(FEATURE_COLUMNS.map(col => cleanedPerms.has(col) ? 1.0 : 0.0));
-};
-
-/** Int32Array version — for quantized/integer-input TFLite models */
 export const buildFeatureVectorInt = (permissions: string[]): Int32Array => {
-    const cleanedPerms = new Set(
-        permissions.map(p => { const parts = p.split('.'); return parts[parts.length - 1]; })
-    );
-    return new Int32Array(FEATURE_COLUMNS.map(col => cleanedPerms.has(col) ? 1 : 0));
+    const vec = buildFeatureVector(permissions);
+    return new Int32Array(vec);
 };
 
-/** Reads sigmoid model output → risk score 0–100 */
-export const interpretModelOutput = (outputData: Float32Array): number => {
-    const maliciousProb = outputData.length >= 2 ? outputData[1] : outputData[0];
-    const score = Math.round(maliciousProb * 100);
-    return isNaN(score) || !isFinite(score) ? -1 : Math.min(100, Math.max(0, score));
+// 1. SVM Evaluator
+export const evaluateSVM = (vector: number[]): AlgorithmResult => {
+  let score = offlineModels.svm.intercept;
+  for (let i = 0; i < vector.length; i++) {
+    score += vector[i] * offlineModels.svm.weights[i];
+  }
+  const prob = 1 / (1 + Math.exp(-score));
+  return {
+    isMalware: prob >= 0.5,
+    confidence: Math.round(prob >= 0.5 ? prob * 100 : (1 - prob) * 100),
+  };
 };
 
-/**
- * FACTOR 1 (35%): Dangerous permission scoring.
- * Returns 0–100 based on individual permission weights.
- */
-function permissionScore(shortPerms: Set<string>): { score: number; flagged: string[] } {
-    let total = 0;
-    const flagged: string[] = [];
-    let criticalCount = 0;
+// 2. Bernoulli Naive Bayes Evaluator
+export const evaluateNaiveBayes = (vector: number[]): AlgorithmResult => {
+  let logMal = offlineModels.naive_bayes.class_prior_malware;
+  let logBen = offlineModels.naive_bayes.class_prior_benign;
 
-    for (const [perm, weight] of Object.entries(PERMISSION_WEIGHTS)) {
-        if (weight > 0 && shortPerms.has(perm)) {
-            total += weight;
-            if (weight >= 14) criticalCount++; // Track highly dangerous permissions
-            if (weight >= 20) criticalCount += 10; // Track highly dangerous permissions
-            if (weight >= 6) flagged.push(perm);
-        }
-    }
-
-    // Non-linear scoring: prevents permission bloat bias.
-    // Having 10 normal permissions won't equal 1 critical one.
-    const finalScore = (criticalCount * 25) + (flagged.length * 5);
-    return { score: Math.min(100, finalScore), flagged }; // Allow it to hit 100 on severe permissions
-}
-
-/**
- * FACTOR 2 (25%): Dangerous combination detection.
- * Returns 0–100 based on risky permission pairs/triples.
- */
-function comboScore(shortPerms: Set<string>): { score: number; combos: string[] } {
-    let total = 0;
-    const combos: string[] = [];
-    for (const combo of DANGEROUS_COMBOS) {
-        if (combo.perms.every(p => shortPerms.has(p))) {
-            total += combo.bonus;
-            combos.push(combo.label);
-        }
-    }
-    return { score: Math.min(100, total), combos };
-}
-
-/**
- * Builds the final human-readable summary from scoring factors.
- */
-function buildReason(
-    permScore: number,
-    flaggedPerms: string[],
-    comboSc: number,
-    detectedCombos: string[],
-    mlScore: number,
-    source: 'ai' | 'rules',
-): string {
-    const parts: string[] = [];
-    if (flaggedPerms.length > 0) {
-        parts.push(`risky permissions: ${flaggedPerms.slice(0, 3).join(', ')}${flaggedPerms.length > 3 ? ` +${flaggedPerms.length - 3} more` : ''}`);
-    }
-    if (detectedCombos.length > 0) {
-        parts.push(`dangerous patterns: ${detectedCombos.slice(0, 2).join(', ')}`);
-    }
-    if (parts.length === 0) return 'No significant threat indicators found.';
-    return parts.join(' | ') + '.';
-}
-
-export const buildAnalysisResult = (
-    permSc: number,
-    flaggedPerms: string[],
-    comboSc: number,
-    detectedCombos: string[],
-    mlRiskScore: number,
-    source: 'ai' | 'rules',
-    isSystemApp: boolean = false,
-    packageName: string = '',
-): AnalysisResult => {
-    // ── Weighted formula ───────────────────────────────────────────
-    let riskScore: number;
-    if (source === 'ai' && mlRiskScore >= 0) {
-        riskScore = Math.round(mlRiskScore * 0.40 + permSc * 0.35 + comboSc * 0.25);
-        // If ML yields a false negative, don't let it drag down an obviously dangerous app.
-        riskScore = Math.max(riskScore, permSc, comboSc);
+  for (let i = 0; i < vector.length; i++) {
+    if (vector[i] === 1) {
+      logMal += offlineModels.naive_bayes.log_prob_malware[i];
+      logBen += offlineModels.naive_bayes.log_prob_benign[i];
     } else {
-        riskScore = Math.round(permSc * 0.60 + comboSc * 0.40);
-        riskScore = Math.max(riskScore, permSc, comboSc);
+      logMal += Math.log(Math.max(1e-9, 1 - Math.exp(offlineModels.naive_bayes.log_prob_malware[i])));
+      logBen += Math.log(Math.max(1e-9, 1 - Math.exp(offlineModels.naive_bayes.log_prob_benign[i])));
     }
+  }
 
-    // ── 🛡️ Trust Dampener ───────────────────────────────────────────
-    // System apps are pre-verified — reduce risk by 60%
-    if (isSystemApp) {
-        riskScore = Math.round(riskScore * 0.4);
-    }
-    // Very Trusted publishers (Banks, Payments, Core Tech) — safely heavily reduce risk
-    const VERY_TRUSTED_PUBLISHERS = [
-        // Global Core Giants & Operating System
-        'com.google', 'com.microsoft', 'com.apple.android', 'com.samsung',
-        'android.', 'com.android', 'com.qualcomm', 'com.mediatek', 'com.sec.android',
-        'com.cyberguardian.app', // System apps and this app itself
-
-        // Major Smartphone OEMs
-        'com.oneplus', 'com.oppo', 'com.coloros', 'com.vivo', 'com.realme',
-        'com.miui', 'com.xiaomi', 'com.motorola', 'com.asus', 'com.nothing',
-
-        // Indian/Regional Payments, Finance, Gov & Trading
-        'net.one97.paytm', 'com.phonepe.app', 
-        'com.nextbillion.groww', // Groww
-        'in.indwealth', // INDmoney
-        'com.fampay.in', // FamApp
-        'com.dhan.live', // Dhan
-        'com.digilocker.android', // Digilocker
-        'in.gov.uidai', 'in.gov.aarogyasetu', // Govt Apps
-
-        // Stock Trading & Broking
-        'com.zerodha.kite3', 'com.msf.angelmobile', 'in.upstox.app',
-        'com.navi.android', 'com.sliceit', 'in.onecard.app', 'com.dreamplug.android.cred',
-        'in.lazypay.app', 'com.mobikwik_new', 'com.freecharge.android',
-        'money.jupiter', 'in.fi.money', 'com.niyo.digital',
-
-        // Major Indian Banks
-        'com.sbi.YONO', 'com.sbi.SBIFreedomPlus', // SBI
-        'com.snapwork.hdfc', // HDFC
-        'com.csam.icici.bank.imobile', // ICICI
-        'com.axis.mobile', // Axis
-        'com.pnb.mBanking', 'com.pnb.PnbPassbook', // PNB
-        'com.bankofindia.boiMobile', // BOI
-        'com.bom.mahaconnect', // Bank of Maharashtra
-        'com.canarabank.mobil', // Canara Bank
-        'com.infrasoft.ubimobility', // Union Bank of India
-        'com.kotak811mobilebankingapp', // Kotak
-        'com.bankofbaroda.mconnect', // Bank of Baroda
-        'com.indusind.indusmobilesmart', // IndusInd
-        'com.idfcfirstbank.optimus', // IDFC FIRST
-        'com.yesbank', // YES Bank
-        'com.hdfcbank.payzapp' // PayZapp
-    ];
-
-    // General Trusted publishers (Social, E-commerce, Delivery, AI, Media) — moderate reduction
-    const GENERAL_TRUSTED_PUBLISHERS = [
-        // Social Media, Messaging & Communication
-        'com.whatsapp', 'com.instagram', 'com.facebook', 'com.twitter', 'com.snapchat', 'com.linkedin',
-        'org.telegram.messenger', 'com.truecaller', 'us.zoom.videomeetings', 'com.Slack',
-        'com.spotify', 'com.netflix', 'com.discord', 'com.zhiliaoapp.musically', // TikTok
-        'com.reddit.frontpage', 'com.pinterest', 'com.quora.android', 'com.medium.reader',
-
-        // AI & Productivity Tools
-        'com.openai.chatgpt', 'com.anthropic.claude', 'notion.id', 'com.canva.editor', 'com.duolingo',
-        'cn.wps.moffice', 'com.adobe', 'com.yahoo', 'com.skype', 'org.mozilla', 'com.brave', 'com.opera',
-        'host.exp.exponent', // Expo Go
-        'com.cv.docscanner', 'com.gombosdev.ampere', 'com.allindiabullion', 'com.buyhatke.assistant',
-        'org.videolan.vlc', 'com.mxtech.videoplayer', 'com.shazam.android',
-
-        // Food Delivery, Quick Commerce & E-commerce
-        'in.swiggy.android', 'com.application.zomato', 'com.zepto.consumer.app', 'com.zepto.app',
-        'com.dunzo.user', 'com.bigbasket.mobileapp', 'com.grofers.customerapp', // Blinkit
-        'com.amazon', 'in.amazon', 'com.myntra.android', 'com.flipkart.android',
-
-        // Travel, Transit & Ride-hailing
-        'com.rapido.passenger', 'com.olacabs.customer', 'in.nammayatri.customer', 'in.redbus.android',
-        'com.makemytrip', 'com.ixigo', 'com.irctc', 'cris.org.in', 'com.ubercab', 'app.zophop',
-
-        // Telecom Providers & Streaming
-        'com.myairtelapp', 'com.mva.myvi', 'com.jio', 'in.startv.hotstar', 'com.sonyliv',
-        'com.graymatrix.did', 'com.crunchyroll', 'com.indeed.android.jobsearch'
-    ];
-
-    if (VERY_TRUSTED_PUBLISHERS.some(pub => packageName.startsWith(pub))) {
-        riskScore = Math.round(riskScore * 0.15); // Heavier dampener (e.g. 100 -> 15) for banking/finance apps
-    } else if (GENERAL_TRUSTED_PUBLISHERS.some(pub => packageName.startsWith(pub))) {
-        riskScore = Math.round(riskScore * 0.35); // Moderate dampener (e.g. 100 -> 35) for general trusted apps
-    }
-
-    riskScore = isNaN(riskScore) ? 0 : Math.min(100, Math.max(0, riskScore));
-    const reason = buildReason(permSc, flaggedPerms, comboSc, detectedCombos, mlRiskScore, source);
-
-    if (riskScore >= 71) {
-        return { risk: 'HIGH', riskScore, reason, recommendation: 'Uninstall this app immediately — it exhibits malware-like behavior.' };
-    } else if (riskScore >= 31) {
-        return { risk: 'MEDIUM', riskScore, reason, recommendation: 'Review permissions carefully before granting further access.' };
-    } else {
-        return { risk: 'LOW', riskScore, reason, recommendation: 'App appears safe based on its permission profile.' };
-    }
+  const logRatio = logMal - logBen;
+  const prob = 1 / (1 + Math.exp(-logRatio));
+  return {
+    isMalware: prob >= 0.5,
+    confidence: Math.round(prob >= 0.5 ? prob * 100 : (1 - prob) * 100),
+  };
 };
 
-/** Rule-based analysis when TFLite model is not loaded */
+// 3. Random Forest Evaluator
+export const evaluateRandomForest = (vector: number[]): AlgorithmResult => {
+  const trees = offlineModels.random_forest.trees;
+  let malwareVotes = 0;
+
+  for (const tree of trees) {
+    let node = 0;
+    while (tree.feature[node] !== -2) { // -2 represents a leaf node in scikit-learn
+      const featureIdx = tree.feature[node];
+      const threshold = tree.threshold[node];
+      node = vector[featureIdx] <= threshold ? tree.children_left[node] : tree.children_right[node];
+    }
+    const [benignSamples, malwareSamples] = tree.value[node];
+    if (malwareSamples > benignSamples) malwareVotes++;
+  }
+
+  const prob = malwareVotes / trees.length;
+  return {
+    isMalware: prob >= 0.5,
+    confidence: Math.round(prob >= 0.5 ? prob * 100 : (1 - prob) * 100),
+  };
+};
+
+// 4. Audit capabilities solely for descriptive text (Zero influence on score)
+export const auditCapabilities = (rawPermissions: string[]): string[] => {
+  const cleaned = rawPermissions.map(p => p.split('.').pop()?.toUpperCase() || '');
+  const tags: string[] = [];
+
+  if (cleaned.includes('ACCESS_FINE_LOCATION') || cleaned.includes('ACCESS_COARSE_LOCATION')) tags.push('Location Tracking');
+  if (cleaned.includes('SYSTEM_ALERT_WINDOW')) tags.push('Window Overlay / Display on Top');
+  if (cleaned.includes('BIND_ACCESSIBILITY_SERVICE')) tags.push('Accessibility Service');
+  if (cleaned.includes('READ_SMS') || cleaned.includes('RECEIVE_SMS') || cleaned.includes('SEND_SMS')) tags.push('SMS Access');
+  if (cleaned.includes('RECORD_AUDIO')) tags.push('Microphone Access');
+  if (cleaned.includes('CAMERA')) tags.push('Camera Access');
+
+  return tags.length > 0 ? tags : ['Standard Device Access'];
+};
+
+// Main Analysis Orchestrator
+export const evaluateAppPureML = (permissions: string[]): PureMLAnalysisResult => {
+  const vector = buildFeatureVector(permissions);
+
+  const rfResult = evaluateRandomForest(vector);
+  const svmResult = evaluateSVM(vector);
+  const nbResult = evaluateNaiveBayes(vector);
+
+  // Soft voting ensemble
+  const rfProb = rfResult.isMalware ? rfResult.confidence / 100 : 1 - rfResult.confidence / 100;
+  const svmProb = svmResult.isMalware ? svmResult.confidence / 100 : 1 - svmResult.confidence / 100;
+  const nbProb = nbResult.isMalware ? nbResult.confidence / 100 : 1 - nbResult.confidence / 100;
+
+  const threatProbability = (rfProb + svmProb + nbProb) / 3;
+  const safetyScore = Math.max(5, Math.min(100, Math.round((1 - threatProbability) * 100)));
+
+  let risk: 'HIGH' | 'MEDIUM' | 'LOW';
+  let recommendation: string;
+
+  if (safetyScore <= 35) {
+    risk = 'HIGH';
+    recommendation = 'Multiple ML models detected strong malware characteristics. Uninstall advised.';
+  } else if (safetyScore <= 65) {
+    risk = 'MEDIUM';
+    recommendation = 'Suspicious permission patterns identified. Review app necessity.';
+  } else {
+    risk = 'LOW';
+    recommendation = 'App verified safe by unanimous model consensus.';
+  }
+
+  return {
+    risk,
+    safetyScore,
+    threatProbability: Math.round(threatProbability * 100),
+    models: {
+      randomForest: rfResult,
+      svm: svmResult,
+      naiveBayes: nbResult,
+    },
+    detectedCapabilities: auditCapabilities(permissions),
+    recommendation,
+  };
+};
+
+/** Backwards Compatibility Interface & Function Wrappers */
+export interface MultiModelAnalysisResult {
+  overallRisk: 'HIGH' | 'MEDIUM' | 'LOW';
+  safetyScore: number;
+  svmVerdict: AlgorithmResult;
+  naiveBayesVerdict: AlgorithmResult;
+  randomForestVerdict: AlgorithmResult;
+  reason: string;
+  recommendation: string;
+}
+
+export interface AnalysisResult extends MultiModelAnalysisResult {
+  risk: 'HIGH' | 'MEDIUM' | 'LOW';
+  riskScore: number;
+}
+
+export const evaluateAppOnDevice = (
+  permissions: string[],
+  isSystemApp: boolean = false,
+  packageName: string = ''
+): MultiModelAnalysisResult => {
+  const res = evaluateAppPureML(permissions);
+  return {
+    overallRisk: res.risk,
+    safetyScore: res.safetyScore,
+    svmVerdict: res.models.svm,
+    naiveBayesVerdict: res.models.naiveBayes,
+    randomForestVerdict: res.models.randomForest,
+    reason: `Detected Capabilities: ${res.detectedCapabilities.join(', ')}`,
+    recommendation: res.recommendation,
+  };
+};
+
+export const evaluateTripleEngine = evaluateAppOnDevice;
+
 export const ruleBasedAnalysis = (
-    permissions: string[],
-    isSystemApp: boolean = false,
-    packageName: string = '',
+  permissions: string[],
+  isSystemApp: boolean = false,
+  packageName: string = '',
 ): AnalysisResult => {
-    if (permissions.length === 0) {
-        return {
-            risk: 'MEDIUM',
-            riskScore: isSystemApp ? 10 : 30,
-            reason: 'Could not read app permissions — treating as moderate risk.',
-            recommendation: 'Grant QUERY_ALL_PACKAGES permission for accurate scanning.',
-        };
-    }
-    const cleanedPerms = new Set(
-        permissions.map(p => { const parts = p.split('.'); return parts[parts.length - 1]; })
-    );
-    const { score: permSc, flagged } = permissionScore(cleanedPerms);
-    const { score: comboSc, combos } = comboScore(cleanedPerms);
-    return buildAnalysisResult(permSc, flagged, comboSc, combos, -1, 'rules', isSystemApp, packageName);
+  const multiRes = evaluateAppOnDevice(permissions, isSystemApp, packageName);
+  return {
+    ...multiRes,
+    risk: multiRes.overallRisk,
+    riskScore: 100 - multiRes.safetyScore,
+  };
 };
 
-/** Full analysis with TFLite output + rule-based factors */
 export const fullAnalysis = (
-    permissions: string[],
-    mlRiskScore: number,
-    isSystemApp: boolean = false,
-    packageName: string = '',
+  permissions: string[],
+  mlRiskScore: number,
+  isSystemApp: boolean = false,
+  packageName: string = '',
 ): AnalysisResult => {
-    const cleanedPerms = new Set(
-        permissions.map(p => { const parts = p.split('.'); return parts[parts.length - 1]; })
-    );
-    const { score: permSc, flagged } = permissionScore(cleanedPerms);
-    const { score: comboSc, combos } = comboScore(cleanedPerms);
-    return buildAnalysisResult(permSc, flagged, comboSc, combos, mlRiskScore, 'ai', isSystemApp, packageName);
+  const multiRes = evaluateAppOnDevice(permissions, isSystemApp, packageName);
+  return {
+    ...multiRes,
+    risk: multiRes.overallRisk,
+    riskScore: 100 - multiRes.safetyScore,
+  };
 };
-
-
 
 /**
  * Interface for ML Kit Barcode Scan Result
  */
 export interface MLKitBarcodeResult {
-    value: string | null;
-    format: BarcodeFormat;
+  value: string | null;
+  format: BarcodeFormat;
 }
 
 /**
  * Interface for ML Kit OCR Result
  */
 export interface MLKitOCRResult {
-    text: string;
-    blocks: TextBlock[];
+  text: string;
+  blocks: TextBlock[];
 }
 
 /**
  * Scan barcodes/QR codes from a local image file
- * @param imageUri - Local file path to the image
- * @returns Array of detected barcodes
  */
 export const scanBarcodes = async (imageUri: string): Promise<MLKitBarcodeResult[]> => {
-    try {
-        const result = await BarcodeScanning.scan(imageUri);
-        return result.map(barcode => ({
-            value: barcode.value || null,
-            format: barcode.format
-        }));
-    } catch (error) {
-        console.error('ML Kit Barcode Scan Error:', error);
-        return [];
-    }
+  try {
+    const result = await BarcodeScanning.scan(imageUri);
+    return result.map(barcode => ({
+      value: barcode.value || null,
+      format: barcode.format
+    }));
+  } catch (error) {
+    console.error('ML Kit Barcode Scan Error:', error);
+    return [];
+  }
 };
 
 /**
  * Recognize text (OCR) from a local image file
- * @param imageUri - Local file path to the image
- * @returns OCR result containing full text and blocks
  */
 export const recognizeText = async (imageUri: string): Promise<MLKitOCRResult | null> => {
-    try {
-        const result = await TextRecognition.recognize(imageUri);
-        return {
-            text: result.text,
-            blocks: result.blocks
-        };
-    } catch (error) {
-        console.error('ML Kit OCR Error:', error);
-        return null;
-    }
+  try {
+    const result = await TextRecognition.recognize(imageUri);
+    return {
+      text: result.text,
+      blocks: result.blocks
+    };
+  } catch (error) {
+    console.error('ML Kit OCR Error:', error);
+    return null;
+  }
 };
 
 /**
  * Extracts URLs from OCR text
- * @param text - Raw text from OCR
- * @returns Array of unique URLs found
  */
 export const extractUrlsFromText = (text: string): string[] => {
-    const urlRegex = /(https?:\/\/[^\s]+)/gi;
-    const matches = text.match(urlRegex) || [];
-    return Array.from(new Set(matches)); // Unique URLs
+  const urlRegex = /(https?:\/\/[^\s]+)/gi;
+  const matches = text.match(urlRegex) || [];
+  return Array.from(new Set(matches));
 };

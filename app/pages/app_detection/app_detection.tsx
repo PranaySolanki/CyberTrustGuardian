@@ -1,11 +1,12 @@
-import { clearLastAppResult } from "@/services/storage/appStore";
+import { clearLastAppResult, setLastAppResult } from "@/services/storage/appStore";
 import useAppScanner, { AppResult } from "@/services/useAppScanner";
 import { useTFLiteClassifier } from "@/services/useTFLiteModel";
+import { evaluateAppPureML } from "@/services/utils/mlKit";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { cacheDirectory, deleteAsync, moveAsync } from 'expo-file-system/legacy';
-import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { useRouter, useFocusEffect } from "expo-router";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -66,7 +67,73 @@ export default function AppDetection({ isMainScreen }: { isMainScreen?: boolean 
   const [isScanning, setIsScanning] = useState(false);
   const router = useRouter();
 
+  // Reset selected APK and analysis state whenever returning to this screen
+  useFocusEffect(
+    useCallback(() => {
+      setSelectedApk(null);
+      setAnalysisResult(null);
+      setShowAllPermissions(false);
+    }, [])
+  );
 
+  const simulateMalwareAttack = () => {
+    // A highly toxic combination of permissions
+    const toxicPermissions = [
+  "SEND_SMS", 
+  "RECEIVE_SMS", 
+  "READ_SMS", 
+  "READ_PHONE_STATE", 
+  "READ_CALL_LOG", 
+  "READ_CONTACTS", 
+  "WRITE_EXTERNAL_STORAGE",
+  "INTERNET"
+];
+  
+    // Feed this directly into pure ML engine
+    const result = evaluateAppPureML(toxicPermissions);
+    console.log(result);
+
+    const statusStr = result.risk === 'HIGH' ? 'Dangerous' : result.risk === 'MEDIUM' ? 'Suspicious' : 'Safe';
+    const safeScore = result.safetyScore;
+
+    setLastAppResult({
+      package_name: "com.hacker.trojan",
+      appName: "Simulated Trojan",
+      permissions: toxicPermissions,
+      isSystemApp: false,
+      analysis: {
+        risk: result.risk,
+        score: safeScore,
+        safetyScore: safeScore,
+        reason: `Detected Capabilities: ${result.detectedCapabilities.join(', ')}`,
+        recommendation: result.recommendation,
+        svmVerdict: result.models.svm,
+        naiveBayesVerdict: result.models.naiveBayes,
+        randomForestVerdict: result.models.randomForest,
+        detectedCapabilities: result.detectedCapabilities,
+      }
+    });
+
+    router.push({
+      pathname: "/pages/app_detection/scan_result",
+      params: {
+        package_name: "com.hacker.trojan",
+        appName: "Simulated Trojan",
+        status: statusStr,
+        score: String(safeScore),
+        reason: `Detected Capabilities: ${result.detectedCapabilities.join(', ')}`,
+        recommendation: result.recommendation,
+        details: "Simulated Trojan App",
+        svmConfidence: String(result.models.svm.confidence),
+        svmIsMalware: String(result.models.svm.isMalware),
+        nbConfidence: String(result.models.naiveBayes.confidence),
+        nbIsMalware: String(result.models.naiveBayes.isMalware),
+        rfConfidence: String(result.models.randomForest.confidence),
+        rfIsMalware: String(result.models.randomForest.isMalware),
+        detectedCapabilities: JSON.stringify(result.detectedCapabilities),
+      }
+    });
+  };
 
   const handleScan = async (item: AppItem) => {
     try {
@@ -75,22 +142,48 @@ export default function AppDetection({ isMainScreen }: { isMainScreen?: boolean 
       // Fetch permissions from native module
       const permissions = await getAppPermissions(item.packageName);
 
-      // Run on-device TFLite inference with app context for Trust Dampener
-      const analysis = predict(permissions, item.isSystemApp ?? false, item.packageName);
+      // Run 100% Pure ML Engine
+      const analysis = evaluateAppPureML(permissions);
 
-      // Clear any stale store data so scan_result uses our fresh params
-      clearLastAppResult();
+      const statusStr = analysis.risk === 'HIGH' ? 'Dangerous' : analysis.risk === 'MEDIUM' ? 'Suspicious' : 'Safe';
+      const safeScore = analysis.safetyScore;
+
+      // Save complete report to app store
+      setLastAppResult({
+        package_name: item.packageName,
+        appName: item.appName,
+        permissions,
+        isSystemApp: item.isSystemApp,
+        analysis: {
+          risk: analysis.risk,
+          score: safeScore,
+          safetyScore: safeScore,
+          reason: `Detected Capabilities: ${analysis.detectedCapabilities.join(', ')}`,
+          recommendation: analysis.recommendation,
+          svmVerdict: analysis.models.svm,
+          naiveBayesVerdict: analysis.models.naiveBayes,
+          randomForestVerdict: analysis.models.randomForest,
+          detectedCapabilities: analysis.detectedCapabilities,
+        }
+      });
 
       router.push({
         pathname: "/pages/app_detection/scan_result",
         params: {
           package_name: item.packageName,
           appName: item.appName,
-          status: analysis.risk === 'HIGH' ? 'Dangerous' : analysis.risk === 'MEDIUM' ? 'Suspicious' : 'Safe',
-          score: Math.max(5, 100 - (isNaN(analysis.riskScore) ? 0 : analysis.riskScore)),
-          reason: analysis.reason,
+          status: statusStr,
+          score: String(safeScore),
+          reason: `Detected Capabilities: ${analysis.detectedCapabilities.join(', ')}`,
           recommendation: analysis.recommendation,
           details: item.appName,
+          svmConfidence: String(analysis.models.svm.confidence),
+          svmIsMalware: String(analysis.models.svm.isMalware),
+          nbConfidence: String(analysis.models.naiveBayes.confidence),
+          nbIsMalware: String(analysis.models.naiveBayes.isMalware),
+          rfConfidence: String(analysis.models.randomForest.confidence),
+          rfIsMalware: String(analysis.models.randomForest.isMalware),
+          detectedCapabilities: JSON.stringify(analysis.detectedCapabilities),
         }
       });
     } catch (e: any) {
@@ -175,11 +268,30 @@ export default function AppDetection({ isMainScreen }: { isMainScreen?: boolean 
       setIsScanning(true);
       const appName = selectedApk.name || "Unknown App";
 
-       // Run on-device TFLite inference with app context for Trust Dampener
-      const analysis = predict(analysisResult.permissions, false, analysisResult.package_name);
+      // Run 100% Pure ML Engine
+      const analysis = evaluateAppPureML(analysisResult.permissions);
 
-      // Clear any stale store data so scan_result uses our fresh params
-      clearLastAppResult();
+      const statusStr = analysis.risk === 'HIGH' ? 'Dangerous' : analysis.risk === 'MEDIUM' ? 'Suspicious' : 'Safe';
+      const safeScore = analysis.safetyScore;
+
+      // Save report
+      setLastAppResult({
+        package_name: analysisResult.package_name,
+        appName: appName,
+        permissions: analysisResult.permissions,
+        isSystemApp: false,
+        analysis: {
+          risk: analysis.risk,
+          score: safeScore,
+          safetyScore: safeScore,
+          reason: `Detected Capabilities: ${analysis.detectedCapabilities.join(', ')}`,
+          recommendation: analysis.recommendation,
+          svmVerdict: analysis.models.svm,
+          naiveBayesVerdict: analysis.models.naiveBayes,
+          randomForestVerdict: analysis.models.randomForest,
+          detectedCapabilities: analysis.detectedCapabilities,
+        }
+      });
 
       // Navigate to result
       router.push({
@@ -187,11 +299,18 @@ export default function AppDetection({ isMainScreen }: { isMainScreen?: boolean 
         params: {
           package_name: analysisResult.package_name,
           appName: appName,
-          status: analysis.risk === 'HIGH' ? 'Dangerous' : analysis.risk === 'MEDIUM' ? 'Suspicious' : 'Safe',
-          score: Math.max(5, 100 - (isNaN(analysis.riskScore) ? 0 : analysis.riskScore)),
-          reason: analysis.reason,
+          status: statusStr,
+          score: String(safeScore),
+          reason: `Detected Capabilities: ${analysis.detectedCapabilities.join(', ')}`,
           recommendation: analysis.recommendation,
           details: appName,
+          svmConfidence: String(analysis.models.svm.confidence),
+          svmIsMalware: String(analysis.models.svm.isMalware),
+          nbConfidence: String(analysis.models.naiveBayes.confidence),
+          nbIsMalware: String(analysis.models.naiveBayes.isMalware),
+          rfConfidence: String(analysis.models.randomForest.confidence),
+          rfIsMalware: String(analysis.models.randomForest.isMalware),
+          detectedCapabilities: JSON.stringify(analysis.detectedCapabilities),
         }
       });
 
@@ -279,6 +398,12 @@ export default function AppDetection({ isMainScreen }: { isMainScreen?: boolean 
             )}
           </TouchableOpacity>
         )}
+
+        {/* ✅ SIMULATION BUTTON */}
+        {/* <TouchableOpacity style={styles.simButton} onPress={simulateMalwareAttack}>
+          <Ionicons name="flask" size={18} color="#FFFFFF" />
+          <Text style={styles.simButtonText}>Simulate Malware Attack</Text>
+        </TouchableOpacity> */}
 
         {/* --- SCROLLABLE PERMISSIONS DISPLAY SECTION --- */}
         {analysisResult && (
@@ -554,5 +679,26 @@ const styles = StyleSheet.create({
   dangerText: {
     color: "#DC2626",
     fontWeight: "700",
+  },
+  simButton: {
+    backgroundColor: "#DC2626",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginTop: 10,
+    marginBottom: 12,
+    shadowColor: "#DC2626",
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  simButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 14,
+    marginLeft: 8,
   },
 });

@@ -1,0 +1,34 @@
+# Node & dependencies
+node_modules/
+
+# Build artifacts & local outputs
+**/android/build/
+**/android/app/build/
+**/android/app/.cxx/
+**/android/.gradle/
+**/ios/build/
+**/ios/Pods/
+
+# Expo & Web builds
+.expo/
+dist/
+web-build/
+
+# Binaries & Archives
+*.apk
+*.aab
+*.dex
+*.ipa
+*.tar.gz
+*.zip
+*.hbc.map
+
+# Temporary files & Scratch scripts
+*.log
+output.txt
+build_output.txt
+key.txt
+decoded_key.txt
+get_key.js
+test_key.js
+decode_script.js

@@ -6,12 +6,26 @@ node_modules
 expo-env.d.ts
 # @end expo-cli
 
-# Android build files
+# Android build files & binaries
 **/android/build/
+**/android/app/build/
+**/android/app/.cxx/
 **/android/.gradle/
 *.dex
 *.apk
-.expo/types/router.d.ts
+*.aab
+
+# Expo & Web builds
 .expo
+dist/
+web-build/
+
+# Environment & Scratch files
 .env
-.expo/types/router.d.ts
+output.txt
+build_output.txt
+key.txt
+decoded_key.txt
+get_key.js
+test_key.js
+decode_script.js

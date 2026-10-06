@@ -1,85 +1,31 @@
 /**
  * useTFLiteModel.ts
- * On-device malware detection — delegates all ML logic to mlKit.ts.
+ * On-device multi-algorithm malware detection engine (SVM, Naive Bayes & Random Forest).
  */
-import { useCallback, useEffect } from 'react';
-import { Platform } from 'react-native';
-import Constants, { ExecutionEnvironment } from 'expo-constants';
-import {
-  AnalysisResult,
-  buildFeatureVector,
-  buildFeatureVectorInt,
-  fullAnalysis,
-  interpretModelOutput,
-  ruleBasedAnalysis,
-} from './utils/mlKit';
+import { useMultiModelClassifier } from './useMultiModelClassifier';
+import { AnalysisResult, evaluateAppOnDevice, MultiModelAnalysisResult } from './utils/mlKit';
 
-const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient || Constants.appOwnership === 'expo';
-
-// Only import useTensorflowModel on native platforms and NOT in Expo Go
-const useTensorflowModel =
-  Platform.OS !== 'web' && !isExpoGo
-    ? require('react-native-fast-tflite').useTensorflowModel
-    : undefined;
-
-
-
-const appModelAsset = require('../assets/models/apps_detection.tflite');
-const useFallbackModel = () => ({ state: 'not-available' as const, model: null });
-
-export type { AnalysisResult };
+export type { AnalysisResult, MultiModelAnalysisResult };
 
 export function useTFLiteClassifier() {
-  const useModelHook = useTensorflowModel || useFallbackModel;
-  const plugin = useModelHook(appModelAsset);
-
-  useEffect(() => {
-    if (plugin.state === 'error') {
-      console.error('[TFLite] Model error:', (plugin as any).error);
-    }
-  }, [plugin.state]);
-
-  const predict = useCallback((
-    permissions: string[],
-    isSystemApp: boolean = false,
-    packageName: string = '',
-  ): AnalysisResult => {
-    // ── Fallback: rule-based multi-factor scoring while TFLite initializes ──
-    if (plugin.state !== 'loaded' || !plugin.model) {
-      console.log('[TFLite] Not ready — using rule-based fallback.');
-      return ruleBasedAnalysis(permissions, isSystemApp, packageName);
-    }
-
-    // ── TFLite on-device inference (40%) + rule-based factors (60%) ─────────
-    try {
-      let outputData: Float32Array | undefined;
-      try {
-        const f32Input = buildFeatureVector(permissions);
-        const outputs = plugin.model.runSync([f32Input]);
-        outputData = outputs[0] as Float32Array;
-      } catch {
-        console.warn('[TFLite] Float32 failed, retrying with Int32...');
-        const i32Input = buildFeatureVectorInt(permissions);
-        const outputs = plugin.model.runSync([i32Input]);
-        outputData = outputs[0] as Float32Array;
-      }
-
-      if (!outputData || outputData.length === 0) {
-        console.warn('[TFLite] Empty output — falling back to rules.');
-        return ruleBasedAnalysis(permissions, isSystemApp, packageName);
-      }
-
-      const mlRiskScore = interpretModelOutput(outputData);
-      return fullAnalysis(permissions, mlRiskScore, isSystemApp, packageName);
-    } catch (err) {
-      console.error('[TFLite] Inference error — falling back to rules:', err);
-      return ruleBasedAnalysis(permissions, isSystemApp, packageName);
-    }
-  }, [plugin]);
+  const multiModel = useMultiModelClassifier();
 
   return {
-    predict,
-    isReady: plugin.state === 'loaded',
-    modelState: plugin.state,
+    predict: (
+      permissions: string[],
+      isSystemApp: boolean = false,
+      packageName: string = ''
+    ) => {
+      const res = evaluateAppOnDevice(permissions, isSystemApp, packageName);
+      return {
+        ...res,
+        risk: res.overallRisk,
+        riskScore: 100 - res.safetyScore,
+      };
+    },
+    isReady: true,
+    modelState: 'loaded' as const,
   };
 }
+
+export { useMultiModelClassifier };
