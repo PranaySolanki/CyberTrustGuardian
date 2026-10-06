@@ -23,11 +23,18 @@ if (raw_api_key) {
     console.warn("EXPO_PUBLIC_SAFE_BROWSING_API_KEY environment variable is not set. Safe Browsing checks will be skipped.");
 }
 
-export async function safeBrowsingCheck(url: string): Promise<any> {
+export async function safeBrowsingCheck(url: string | string[]): Promise<any> {
     // Check if API key is available
     if (!api_key) {
         // Return null result instead of throwing - allows graceful degradation
         // The calling code will handle this as a skipped check
+        return null;
+    }
+
+    const rawUrls = Array.isArray(url) ? url : [url];
+    const urls = Array.from(new Set(rawUrls.filter(Boolean)));
+
+    if (urls.length === 0) {
         return null;
     }
 
@@ -47,7 +54,7 @@ export async function safeBrowsingCheck(url: string): Promise<any> {
             ],
             platformTypes: ["ANY_PLATFORM"],
             threatEntryTypes: ["URL"],
-            threatEntries: [{ url }]
+            threatEntries: urls.map(u => ({ url: u }))
         }
     };
 

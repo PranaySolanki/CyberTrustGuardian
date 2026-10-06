@@ -167,7 +167,7 @@ export default function Phishing() {
       let threatDetails = '';
 
       const [sbResult, geminiResult] = await Promise.all([
-        urls.length > 0 ? safeBrowsingCheck(urls[0]).catch(e => {
+        urls.length > 0 ? safeBrowsingCheck(urls).catch(e => {
           console.error('SafeBrowsing error', e);
           return null;
         }) : Promise.resolve(null),
@@ -179,7 +179,11 @@ export default function Phishing() {
 
       if (sbResult?.matches?.length > 0) {
         isUrlMalicious = true;
-        threatDetails = sbResult.matches.map((m: any) => m.threatType).join(', ');
+        const flaggedInfo = sbResult.matches.map((m: any) => {
+          const matchUrl = m.threat?.url || m.threatEntry?.url || '';
+          return matchUrl ? `${matchUrl} [${m.threatType}]` : m.threatType;
+        });
+        threatDetails = flaggedInfo.join(', ');
       }
 
       // ── Step 3: Combine Both Results for Final Verdict ─────────────
